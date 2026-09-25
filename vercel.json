@@ -1,0 +1,7 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/ireland", "destination": "/ireland.html" },
+    { "source": "/ireland/", "destination": "/ireland.html" }
+  ]
+}
