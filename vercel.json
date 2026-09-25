@@ -1,11 +1,11 @@
 {
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/ireland", "destination": "/pack.html" },
-    { "source": "/ireland/", "destination": "/pack.html" },
-    { "source": "/brazil", "destination": "/pack.html" },
-    { "source": "/brazil/", "destination": "/pack.html" },
-    { "source": "/europe", "destination": "/pack.html" },
-    { "source": "/europe/", "destination": "/pack.html" }
+    { "source": "/ireland", "destination": "/pack" },
+    { "source": "/ireland/", "destination": "/pack" },
+    { "source": "/brazil", "destination": "/pack" },
+    { "source": "/brazil/", "destination": "/pack" },
+    { "source": "/europe", "destination": "/pack" },
+    { "source": "/europe/", "destination": "/pack" }
   ]
 }
