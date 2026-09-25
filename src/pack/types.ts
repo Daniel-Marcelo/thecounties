@@ -18,4 +18,11 @@ export type Pack = {
   compactLabels: string[];
   stripPrefixes: string[];
   mapLabel: string;
+  unitSingular: string;
+  unitPlural: string;
+  placeholder: string;
+  credit: string;
+  helpIntro: string;
+  helpItems: string[];
+  winTitle: string;
 };

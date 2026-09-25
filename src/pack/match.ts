@@ -1,8 +1,9 @@
 import type { Place } from "./types";
 
 export function normalizeName(value: string, stripPrefixes: string[]): string {
-  const prefix = stripPrefixes.length
-    ? new RegExp(`^(${stripPrefixes.map(escapeRegExp).join("|")})\\s+`, "i")
+  const prefixes = [...stripPrefixes].sort((a, b) => b.length - a.length);
+  const prefix = prefixes.length
+    ? new RegExp(`^(${prefixes.map(escapeRegExp).join("|")})\\s+`, "i")
     : null;
 
   let normalized = value

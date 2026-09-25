@@ -2,8 +2,12 @@ import { resolve } from "node:path";
 import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } from "vite";
 
 const PACK_ROUTES: Record<string, string> = {
-  "/ireland": "/ireland.html",
-  "/ireland/": "/ireland.html",
+  "/ireland": "/pack.html",
+  "/ireland/": "/pack.html",
+  "/brazil": "/pack.html",
+  "/brazil/": "/pack.html",
+  "/europe": "/pack.html",
+  "/europe/": "/pack.html",
 };
 
 function rewritePackRoutes(req: { url?: string }): void {
@@ -37,7 +41,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
-        ireland: resolve(__dirname, "ireland.html"),
+        pack: resolve(__dirname, "pack.html"),
       },
     },
   },

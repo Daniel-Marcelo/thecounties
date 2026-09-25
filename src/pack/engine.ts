@@ -37,6 +37,17 @@ export function startPack(pack: Pack): void {
   const winDialog = document.querySelector<HTMLDialogElement>("#win-dialog")!;
   const winSummary = document.querySelector<HTMLParagraphElement>("#win-summary")!;
   const shareButton = document.querySelector<HTMLButtonElement>("#share")!;
+  const foundTotalEl = document.querySelector<HTMLElement>("#found-total")!;
+  const guessLabel = document.querySelector<HTMLLabelElement>("#guess-label")!;
+  const eyebrow = document.querySelector<HTMLElement>("#eyebrow")!;
+  const heading = document.querySelector<HTMLElement>("#heading")!;
+  const credit = document.querySelector<HTMLElement>("#credit")!;
+  const helpIntro = document.querySelector<HTMLElement>("#help-intro")!;
+  const helpList = document.querySelector<HTMLUListElement>("#help-list")!;
+  const winTitle = document.querySelector<HTMLElement>("#win-title")!;
+  const legend = document.querySelector<HTMLElement>("#legend")!;
+
+  applyChrome();
 
   const map = new PackMap(mapSvg, pack);
   const found = new Set<string>();
@@ -48,6 +59,36 @@ export function startPack(pack: Pack): void {
   let timerId: number | null = null;
   let finished = false;
   let restoring = false;
+
+  function applyChrome(): void {
+    document.title = `${pack.title} — Name all ${total} ${pack.unitPlural}`;
+    eyebrow.textContent = pack.eyebrow;
+    heading.textContent = pack.title;
+    foundTotalEl.textContent = `/ ${total} found`;
+    input.placeholder = pack.placeholder;
+    guessLabel.textContent = `${pack.unitSingular} name`;
+    credit.textContent = pack.credit;
+    helpIntro.textContent = pack.helpIntro;
+    helpList.replaceChildren(
+      ...pack.helpItems.map((item) => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        return li;
+      }),
+    );
+    winTitle.textContent = pack.winTitle;
+    setStatus("idle", `Type a ${pack.unitSingular} to begin.`);
+
+    legend.replaceChildren();
+    for (const [name, color] of Object.entries(pack.groupColors)) {
+      const swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = color;
+      const label = document.createElement("span");
+      label.textContent = name;
+      legend.append(swatch, label);
+    }
+  }
 
   function setStatus(kind: StatusKind, message: string): void {
     statusEl.dataset.kind = kind;
@@ -147,6 +188,8 @@ export function startPack(pack: Pack): void {
     const item = document.createElement("li");
     item.dataset.province = place.group;
     item.innerHTML = `<span>${place.name}</span><em>${place.group}</em>`;
+    const nameEl = item.querySelector("span");
+    if (nameEl) nameEl.style.color = pack.groupColors[place.group] ?? "";
     foundListEl.prepend(item);
   }
 
@@ -181,7 +224,7 @@ export function startPack(pack: Pack): void {
     if (finished) {
       input.disabled = true;
       if (found.size === total) {
-        setStatus("win", `The lot of them. ${total} counties in ${formatTime(elapsedMs())}.`);
+        setStatus("win", `The lot of them. ${total} ${pack.unitPlural} in ${formatTime(elapsedMs())}.`);
       } else {
         map.revealRemaining(found);
         const missed = pack.places.filter((place) => !found.has(place.id)).map((place) => place.name);
@@ -212,10 +255,10 @@ export function startPack(pack: Pack): void {
     saveBest(elapsed);
     saveSession();
     renderStats();
-    setStatus("win", `The lot of them. ${total} counties in ${formatTime(elapsed)}.`);
+    setStatus("win", `The lot of them. ${total} ${pack.unitPlural} in ${formatTime(elapsed)}.`);
     input.disabled = true;
     syncActions();
-    winSummary.textContent = `You named every county in ${formatTime(elapsed)} across ${guesses} guesses.`;
+    winSummary.textContent = `You named every ${pack.unitSingular} in ${formatTime(elapsed)} across ${guesses} guesses.`;
     winDialog.showModal();
   }
 
@@ -232,7 +275,7 @@ export function startPack(pack: Pack): void {
       saveSession();
       syncActions();
       renderStats();
-      setStatus("bad", "Not one of the 32.");
+      setStatus("bad", `Not one of the ${total}.`);
       form.classList.remove("shake");
       void form.offsetWidth;
       form.classList.add("shake");
@@ -291,7 +334,7 @@ export function startPack(pack: Pack): void {
     input.disabled = false;
     input.value = "";
     syncActions();
-    setStatus("idle", "Type a county to begin.");
+    setStatus("idle", `Type a ${pack.unitSingular} to begin.`);
     renderStats();
     input.focus();
   }
@@ -354,8 +397,8 @@ export function startPack(pack: Pack): void {
       setStatus("bad", error instanceof Error ? error.message : "Map failed to load.");
     });
 
-  if (!localStorage.getItem("thecounties.seenHelp")) {
+  if (!localStorage.getItem(`thecounties.pack.${pack.id}.seenHelp`)) {
     overlay.showModal();
-    localStorage.setItem("thecounties.seenHelp", "1");
+    localStorage.setItem(`thecounties.pack.${pack.id}.seenHelp`, "1");
   }
 }
