@@ -4,6 +4,7 @@ import { buildAliasIndex, matchPlace } from "../pack/match";
 import type { Place } from "../pack/types";
 import { COUNTRIES, type Country } from "./countries";
 import { borderKm, formatKm, heatColor, sampleBorders } from "./distance";
+import { suggestCountries } from "./suggest";
 import { GlobleMap } from "./map";
 
 type Guess = { id: string; km: number };
@@ -50,6 +51,7 @@ export function startGloble(): void {
   const winDialog = document.querySelector<HTMLDialogElement>("#win-dialog")!;
   const winSummary = document.querySelector<HTMLParagraphElement>("#win-summary")!;
   const shareButton = document.querySelector<HTMLButtonElement>("#share")!;
+  const suggestList = document.querySelector<HTMLUListElement>("#guess-suggest")!;
 
   const map = new GlobleMap(mapSvg);
   let borders = new Map<string, Position[]>();
@@ -60,10 +62,65 @@ export function startGloble(): void {
   let finished = false;
   let revealed = false;
   let restoring = false;
+  let suggestions: Country[] = [];
+  let activeSuggest = 0;
 
   function pickCountry(exceptId?: string): Country {
     const pool = exceptId ? COUNTRIES.filter((country) => country.id !== exceptId) : COUNTRIES;
     return pool[Math.floor(Math.random() * pool.length)]!;
+  }
+
+  function hideSuggest(): void {
+    suggestions = [];
+    activeSuggest = 0;
+    suggestList.hidden = true;
+    suggestList.replaceChildren();
+    input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
+  }
+
+  function renderSuggest(): void {
+    suggestions = suggestCountries(input.value, COUNTRIES, new Set(guessed.keys()), STRIP);
+    activeSuggest = 0;
+    if (suggestions.length === 0 || finished) {
+      hideSuggest();
+      return;
+    }
+
+    suggestList.replaceChildren(
+      ...suggestions.map((country, index) => {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.id = `guess-opt-${country.id}`;
+        button.setAttribute("role", "option");
+        button.setAttribute("aria-selected", index === 0 ? "true" : "false");
+        button.textContent = country.name;
+        button.addEventListener("pointerdown", (event) => event.preventDefault());
+        button.addEventListener("click", () => {
+          submitGuess(country.name);
+          input.value = "";
+          hideSuggest();
+          input.focus();
+        });
+        item.append(button);
+        return item;
+      }),
+    );
+    suggestList.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    input.setAttribute("aria-activedescendant", `guess-opt-${suggestions[0]!.id}`);
+  }
+
+  function moveSuggest(delta: number): void {
+    if (suggestions.length === 0) return;
+    const buttons = suggestList.querySelectorAll("button");
+    buttons[activeSuggest]?.setAttribute("aria-selected", "false");
+    activeSuggest = (activeSuggest + delta + suggestions.length) % suggestions.length;
+    buttons[activeSuggest]?.setAttribute("aria-selected", "true");
+    buttons[activeSuggest]?.scrollIntoView({ block: "nearest" });
+    const id = suggestions[activeSuggest]?.id;
+    if (id) input.setAttribute("aria-activedescendant", `guess-opt-${id}`);
   }
 
   function setStatus(kind: string, message: string): void {
@@ -165,6 +222,7 @@ export function startGloble(): void {
     input.disabled = true;
     setStatus("win", `${target.name}. ${guesses} guesses in ${formatTime(elapsedMs())}.`);
     winSummary.textContent = `The country was ${target.name}. You found it in ${guesses} guesses.`;
+    hideSuggest();
     winDialog.showModal();
   }
 
@@ -209,6 +267,7 @@ export function startGloble(): void {
     input.disabled = true;
     saveSession();
     syncActions();
+    hideSuggest();
     setStatus("giveup", `It was ${target.name}.`);
   }
 
@@ -226,6 +285,7 @@ export function startGloble(): void {
     map.reset();
     input.disabled = false;
     input.value = "";
+    hideSuggest();
     syncActions();
     renderStats();
     setStatus("idle", "Type a country to begin.");
@@ -296,9 +356,33 @@ export function startGloble(): void {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    submitGuess(input.value);
+    const picked = suggestions[activeSuggest];
+    submitGuess(picked?.name ?? input.value);
     input.value = "";
+    hideSuggest();
     input.focus();
+  });
+  input.addEventListener("input", () => {
+    if (finished) return;
+    renderSuggest();
+  });
+  input.addEventListener("keydown", (event) => {
+    if (suggestList.hidden) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveSuggest(1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveSuggest(-1);
+    } else if (event.key === "Escape") {
+      hideSuggest();
+    }
+  });
+  input.addEventListener("blur", () => {
+    window.setTimeout(() => {
+      if (document.activeElement === input) return;
+      hideSuggest();
+    }, 180);
   });
   giveUpButton.addEventListener("click", giveUp);
   startOverButton.addEventListener("click", () => {

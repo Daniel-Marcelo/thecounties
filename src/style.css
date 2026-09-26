@@ -276,8 +276,50 @@ h1 {
 
 #guess-form {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
+  align-items: center;
+}
+
+.suggest-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+#guess-suggest {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  max-height: min(40vh, 280px);
+  overflow: auto;
+  z-index: 6;
+}
+
+#guess-suggest button {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+#guess-suggest button[aria-selected="true"],
+#guess-suggest button:hover {
+  background: var(--paper-deep);
 }
 
 #guess {
@@ -294,7 +336,7 @@ h1 {
   border-color: #a89274;
 }
 
-#guess-form button,
+#guess-form > button,
 .sheet button,
 .win-actions button {
   border: 0;
@@ -454,9 +496,39 @@ h1 {
 }
 
 .globle-map {
+  position: relative;
   min-height: 0;
   height: 100%;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.globle-app #map {
+  touch-action: none;
+}
+
+.map-zoom {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  gap: 8px;
+  z-index: 2;
+}
+
+.map-zoom button {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card) 92%, white);
+  color: var(--ink);
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow);
 }
 
 .globle-app #map,

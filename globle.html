@@ -47,6 +47,10 @@
       <main class="stage globle-stage">
         <div class="map-wrap globle-map">
           <svg id="map"></svg>
+          <div class="map-zoom" role="group" aria-label="Map zoom">
+            <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+            <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+          </div>
         </div>
 
         <aside class="rail">
@@ -64,16 +68,23 @@
         <p id="status" data-kind="idle">Type a country to begin.</p>
         <form id="guess-form">
           <label class="sr-only" for="guess">Country name</label>
-          <input
-            id="guess"
-            name="guess"
-            type="text"
-            autocomplete="off"
-            autocapitalize="words"
-            spellcheck="false"
-            enterkeyhint="go"
-            placeholder="Name a country…"
-          />
+          <div class="suggest-wrap">
+            <input
+              id="guess"
+              name="guess"
+              type="text"
+              autocomplete="off"
+              autocapitalize="words"
+              spellcheck="false"
+              enterkeyhint="go"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-controls="guess-suggest"
+              aria-expanded="false"
+              placeholder="Name a country…"
+            />
+            <ul id="guess-suggest" hidden role="listbox" aria-label="Country matches"></ul>
+          </div>
           <button type="submit">Guess</button>
         </form>
         <div class="actions">
@@ -94,7 +105,8 @@
         <li>The number by each guess is kilometres between the two countries’ closest borders.</li>
         <li>0 km means they share a land border.</li>
         <li>France is metropolitan France, so French Guiana does not count as a France–Brazil border.</li>
-        <li>Pinch or scroll to zoom. Drag to pan.</li>
+        <li>Start typing a country — matches appear so you can tap one instead of fighting spelling on a phone.</li>
+        <li>Pinch, double-tap, or use + / − to zoom. Drag to pan.</li>
       </ul>
       <button type="button" data-close>To the map</button>
     </dialog>

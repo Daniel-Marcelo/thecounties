@@ -18,6 +18,7 @@ export class GlobleMap {
   private last = { x: 0, y: 0 };
   private pointers = new Map<number, { x: number; y: number }>();
   private pinch: { dist: number; k: number } | null = null;
+  private lastTap = 0;
 
   constructor(svg: SVGSVGElement) {
     this.svg = svg;
@@ -110,6 +111,19 @@ export class GlobleMap {
   private bindPanZoom(): void {
     const wrap = this.svg.parentElement;
     if (!wrap) return;
+
+    wrap.querySelector("#zoom-in")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.zoomCenter(1.4, wrap);
+    });
+    wrap.querySelector("#zoom-out")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.zoomCenter(1 / 1.4, wrap);
+    });
+    wrap.querySelectorAll(".map-zoom button").forEach((button) => {
+      button.addEventListener("pointerdown", (event) => event.stopPropagation());
+    });
+
     wrap.addEventListener("pointerdown", (event) => {
       if (event.pointerType === "mouse" && event.button !== 0) return;
       this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -119,55 +133,89 @@ export class GlobleMap {
         this.last = { x: event.clientX, y: event.clientY };
       } else {
         this.dragging = false;
-        this.pinch = null;
       }
     });
     wrap.addEventListener("pointermove", (event) => {
+      if (this.pinch || this.pointers.size !== 1 || !this.dragging) return;
       if (!this.pointers.has(event.pointerId)) return;
-      this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      if (this.pointers.size >= 2) {
-        const [a, b] = [...this.pointers.values()];
-        const dist = Math.hypot(a.x - b.x, a.y - b.y);
-        if (!this.pinch) {
-          this.pinch = { dist, k: this.view.k };
-          return;
-        }
-        const midX = (a.x + b.x) / 2;
-        const midY = (a.y + b.y) / 2;
-        this.zoomAt(midX, midY, (this.pinch.k * dist) / this.pinch.dist / this.view.k, wrap);
-        return;
-      }
-      if (!this.dragging) return;
       this.view.x += event.clientX - this.last.x;
       this.view.y += event.clientY - this.last.y;
       this.last = { x: event.clientX, y: event.clientY };
+      this.pointers.set(event.pointerId, this.last);
       this.applyView();
     });
-    const stop = (event: PointerEvent) => {
+    const stopPointer = (event: PointerEvent) => {
+      const start = this.pointers.get(event.pointerId);
       this.pointers.delete(event.pointerId);
-      this.pinch = null;
       this.dragging = this.pointers.size === 1;
       if (this.dragging) {
         const remaining = [...this.pointers.values()][0];
         if (remaining) this.last = remaining;
       }
+      if (!start || this.pointers.size > 0 || this.pinch) return;
+      const moved = Math.hypot(event.clientX - start.x, event.clientY - start.y);
+      const now = Date.now();
+      if (moved < 12 && now - this.lastTap < 320) {
+        this.zoomAt(event.clientX, event.clientY, 1.8, wrap);
+        this.lastTap = 0;
+      } else {
+        this.lastTap = moved < 12 ? now : 0;
+      }
     };
-    wrap.addEventListener("pointerup", stop);
-    wrap.addEventListener("pointercancel", stop);
+    wrap.addEventListener("pointerup", stopPointer);
+    wrap.addEventListener("pointercancel", stopPointer);
     wrap.addEventListener(
       "wheel",
       (event) => {
         event.preventDefault();
-        const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
-        this.zoomAt(event.clientX, event.clientY, factor, wrap);
+        this.zoomAt(event.clientX, event.clientY, event.deltaY < 0 ? 1.12 : 1 / 1.12, wrap);
       },
       { passive: false },
     );
+    wrap.addEventListener(
+      "touchstart",
+      (event) => {
+        if (event.touches.length !== 2) return;
+        event.preventDefault();
+        this.dragging = false;
+        this.pinch = { dist: touchDist(event.touches), k: this.view.k };
+      },
+      { passive: false },
+    );
+    wrap.addEventListener(
+      "touchmove",
+      (event) => {
+        if (event.touches.length !== 2 || !this.pinch) return;
+        event.preventDefault();
+        const a = event.touches[0]!;
+        const b = event.touches[1]!;
+        const dist = touchDist(event.touches);
+        this.zoomAt(
+          (a.clientX + b.clientX) / 2,
+          (a.clientY + b.clientY) / 2,
+          this.pinch.k * (dist / this.pinch.dist) / this.view.k,
+          wrap,
+        );
+      },
+      { passive: false },
+    );
+    wrap.addEventListener("touchend", () => {
+      this.pinch = null;
+    });
+    wrap.addEventListener("touchcancel", () => {
+      this.pinch = null;
+    });
+  }
+
+  private zoomCenter(factor: number, wrap: HTMLElement): void {
+    const rect = wrap.getBoundingClientRect();
+    this.zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, factor, wrap);
   }
 
   private zoomAt(clientX: number, clientY: number, factor: number, wrap: HTMLElement): void {
-    const next = Math.min(8, Math.max(1, this.view.k * factor));
+    const next = Math.min(12, Math.max(1, this.view.k * factor));
     const rect = wrap.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
     const px = ((clientX - rect.left) / rect.width) * VIEW[0];
     const py = ((clientY - rect.top) / rect.height) * VIEW[1];
     const scale = next / this.view.k;
@@ -211,6 +259,12 @@ export class GlobleMap {
   private hideTooltip(): void {
     if (this.tooltip) this.tooltip.hidden = true;
   }
+}
+
+function touchDist(touches: TouchList): number {
+  const a = touches[0]!;
+  const b = touches[1]!;
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 }
 
 function planarPath(geometry: Geometry, projection: Projection): string {
