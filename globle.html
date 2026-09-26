@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Guess the secret country. The map gets hotter as you get closer."
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>The Counties — Globle</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,700&family=Nunito:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body class="globle-body">
+    <div class="app globle-app">
+      <header class="topbar">
+        <p class="eyebrow">World · 197 countries</p>
+        <h1>Globle</h1>
+        <button id="help" class="icon-btn" type="button" aria-label="How to play">?</button>
+      </header>
+
+      <section class="stats" aria-label="Progress">
+        <div>
+          <span id="guess-count">0</span>
+          <small>guesses</small>
+        </div>
+        <div>
+          <span id="closest">—</span>
+          <small>closest</small>
+        </div>
+        <div>
+          <span id="timer">0:00</span>
+          <small>time</small>
+        </div>
+        <div>
+          <span id="best">—</span>
+          <small>best</small>
+        </div>
+      </section>
+
+      <main class="stage globle-stage">
+        <div class="map-wrap globle-map">
+          <svg id="map"></svg>
+        </div>
+
+        <aside class="rail">
+          <h2>Guesses</h2>
+          <ul id="found-list"></ul>
+          <p class="legend globle-legend">
+            <span class="heat-bar" aria-hidden="true"></span>
+            <span>Cold</span>
+            <span>Hot</span>
+          </p>
+        </aside>
+      </main>
+
+      <footer class="dock">
+        <p id="status" data-kind="idle">Type a country to begin.</p>
+        <form id="guess-form">
+          <label class="sr-only" for="guess">Country name</label>
+          <input
+            id="guess"
+            name="guess"
+            type="text"
+            autocomplete="off"
+            autocapitalize="words"
+            spellcheck="false"
+            enterkeyhint="go"
+            placeholder="Name a country…"
+          />
+          <button type="submit">Guess</button>
+        </form>
+        <div class="actions">
+          <button id="give-up" type="button" class="ghost">Reveal country</button>
+          <button id="start-over" type="button" class="ghost" hidden>New country</button>
+        </div>
+        <p class="credit">197 countries, same list as Globle · borders from Natural Earth</p>
+      </footer>
+    </div>
+
+    <dialog id="help-dialog" class="sheet">
+      <h2>How to play</h2>
+      <p>
+        Each game picks one of 197 countries. Guess a country and it fills on the map — white is
+        far, red is close.
+      </p>
+      <ul>
+        <li>The number by each guess is kilometres between the two countries’ closest borders.</li>
+        <li>0 km means they share a land border.</li>
+        <li>France is metropolitan France, so French Guiana does not count as a France–Brazil border.</li>
+        <li>Pinch or scroll to zoom. Drag to pan.</li>
+      </ul>
+      <button type="button" data-close>To the map</button>
+    </dialog>
+
+    <dialog id="win-dialog" class="sheet win">
+      <h2>You found it</h2>
+      <p id="win-summary"></p>
+      <div class="win-actions">
+        <button type="button" id="share">Share</button>
+        <button type="button" data-close class="ghost">Close</button>
+      </div>
+    </dialog>
+
+    <script type="module" src="/src/globle/main.ts"></script>
+  </body>
+</html>

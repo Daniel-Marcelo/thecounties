@@ -6,6 +6,8 @@
     { "source": "/brazil", "destination": "/pack" },
     { "source": "/brazil/", "destination": "/pack" },
     { "source": "/europe", "destination": "/pack" },
-    { "source": "/europe/", "destination": "/pack" }
+    { "source": "/europe/", "destination": "/pack" },
+    { "source": "/globle", "destination": "/globle" },
+    { "source": "/globle/", "destination": "/globle" }
   ]
 }

@@ -435,3 +435,84 @@ h1 {
     min-height: 52vh;
   }
 }
+
+.globle-app {
+  width: min(1120px, 100%);
+  min-height: 100dvh;
+  min-height: 100svh;
+  padding: max(10px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  gap: 8px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.globle-stage {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  gap: 10px;
+}
+
+.globle-map {
+  min-height: 0;
+  height: 100%;
+  touch-action: none;
+}
+
+.globle-app #map,
+.globle-app .map-wrap {
+  min-height: 0;
+  height: 100%;
+}
+
+.globle-app .rail {
+  min-height: 0;
+  max-height: 26vh;
+  padding: 10px 12px;
+}
+
+.globle-app #guess {
+  font-size: 16px;
+}
+
+.globle-app .stats span {
+  font-size: clamp(1rem, 3.6vw, 1.45rem);
+}
+
+.globle-legend {
+  grid-template-columns: 1fr auto auto;
+  gap: 6px 10px;
+}
+
+.heat-bar {
+  grid-column: 1 / -1;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f4efe4, #e8b48a, #c1121f);
+  border: 1px solid var(--line);
+}
+
+.globle-app #found-list li {
+  border-left: 5px solid var(--heat, var(--line));
+}
+
+.county.solved {
+  stroke: #2b2118;
+  stroke-width: 1.4;
+}
+
+.globle-world .county {
+  fill-rule: nonzero;
+}
+
+@media (min-width: 900px) {
+  .globle-stage {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .globle-app .rail {
+    max-height: none;
+    height: 100%;
+  }
+}
