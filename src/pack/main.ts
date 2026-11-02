@@ -2,12 +2,14 @@ import { brazilPack } from "./brazil";
 import { startPack } from "./engine";
 import { europePack } from "./europe";
 import { irelandPack } from "./ireland";
+import { southAmericaPack } from "./south-america";
 import type { Pack } from "./types";
 
 const PACKS: Record<string, Pack> = {
   ireland: irelandPack,
   brazil: brazilPack,
   europe: europePack,
+  "south-america": southAmericaPack,
 };
 
 function packFromPath(): Pack {
