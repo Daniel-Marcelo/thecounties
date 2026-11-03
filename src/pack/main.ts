@@ -1,3 +1,4 @@
+import { africaPack } from "./africa";
 import { brazilPack } from "./brazil";
 import { asiaPack } from "./asia";
 import { startPack } from "./engine";
@@ -14,6 +15,7 @@ const PACKS: Record<string, Pack> = {
   "south-america": southAmericaPack,
   asia: asiaPack,
   oceania: oceaniaPack,
+  africa: africaPack,
 };
 
 function packFromPath(): Pack {

@@ -13,6 +13,8 @@
     { "source": "/asia/", "destination": "/pack" },
     { "source": "/oceania", "destination": "/pack" },
     { "source": "/oceania/", "destination": "/pack" },
+    { "source": "/africa", "destination": "/pack" },
+    { "source": "/africa/", "destination": "/pack" },
     { "source": "/globle", "destination": "/globle" },
     { "source": "/globle/", "destination": "/globle" }
   ]
