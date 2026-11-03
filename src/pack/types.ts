@@ -15,6 +15,13 @@ export type Pack = {
   groupColors: Record<string, string>;
   frame: [number, number][];
   viewBox: [number, number];
+  /**
+   * Central meridian the projection should rotate to. Required for regions
+   * that span the antimeridian (e.g. Oceania): the frame is built on
+   * unwrapped longitudes, and d3's mercator wraps them back into [-180, 180]
+   * unless the projection is rotated. Leave unset for every other region.
+   */
+  rotateLon?: number;
   compactLabels: string[];
   stripPrefixes: string[];
   mapLabel: string;

@@ -39,7 +39,10 @@ export class PackMap {
     this.svg.setAttribute("role", "img");
     this.svg.setAttribute("aria-label", this.pack.mapLabel);
 
-    const projection = geoMercator().fitExtent(
+    const projection = (this.pack.rotateLon
+      ? geoMercator().rotate([-this.pack.rotateLon, 0])
+      : geoMercator()
+    ).fitExtent(
       [
         [18, 12],
         [width - 18, height - 18],

@@ -11,6 +11,8 @@
     { "source": "/south-america/", "destination": "/pack" },
     { "source": "/asia", "destination": "/pack" },
     { "source": "/asia/", "destination": "/pack" },
+    { "source": "/oceania", "destination": "/pack" },
+    { "source": "/oceania/", "destination": "/pack" },
     { "source": "/globle", "destination": "/globle" },
     { "source": "/globle/", "destination": "/globle" }
   ]

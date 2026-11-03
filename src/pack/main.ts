@@ -3,6 +3,7 @@ import { asiaPack } from "./asia";
 import { startPack } from "./engine";
 import { europePack } from "./europe";
 import { irelandPack } from "./ireland";
+import { oceaniaPack } from "./oceania";
 import { southAmericaPack } from "./south-america";
 import type { Pack } from "./types";
 
@@ -12,6 +13,7 @@ const PACKS: Record<string, Pack> = {
   europe: europePack,
   "south-america": southAmericaPack,
   asia: asiaPack,
+  oceania: oceaniaPack,
 };
 
 function packFromPath(): Pack {

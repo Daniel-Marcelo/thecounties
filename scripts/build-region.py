@@ -34,8 +34,13 @@ def merc_y(lat: float) -> float:
     return math.log(math.tan(math.radians(45 + lat / 2)))
 
 
-def set_bbox(geometry: dict) -> tuple[float, float, float, float]:
-    """Return (west, east, south, north) of a GeoJSON geometry."""
+def set_bbox(geometry: dict, unwrap: bool = False) -> tuple[float, float, float, float]:
+    """Return (west, east, south, north) of a GeoJSON geometry.
+
+    With unwrap, longitudes are normalized to [0, 360) first, so regions
+    spanning the antimeridian (e.g. Kiribati) get a continuous frame instead
+    of a nonsense min/max across the date line.
+    """
     xs: list[float] = []
     ys: list[float] = []
     polys = (
@@ -46,7 +51,7 @@ def set_bbox(geometry: dict) -> tuple[float, float, float, float]:
     for polygon in polys:
         for ring in polygon:
             for x, y in ring:
-                xs.append(x)
+                xs.append((x if x >= 0 else x + 360) if unwrap else x)
                 ys.append(y)
     if not xs:
         return 0.0, 0.0, 0.0, 0.0
@@ -72,6 +77,12 @@ def main() -> int:
         type=float,
         default=0.03,
         help="sea margin per side as a fraction of the span (default 0.03)",
+    )
+    parser.add_argument(
+        "--unwrap",
+        action="store_true",
+        help="antimeridian regions: compute longitudes in [0, 360) and print the "
+        "rotation centre the renderer needs (Pack.rotateLon)",
     )
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
@@ -110,11 +121,19 @@ def main() -> int:
 
     w0, w1, s0, s1 = None, None, None, None
     for f in features:
-        b0, b1, c0, c1 = set_bbox(f["geometry"])
+        b0, b1, c0, c1 = set_bbox(f["geometry"], unwrap=args.unwrap)
         w0 = b0 if w0 is None else min(w0, b0)
         w1 = b1 if w1 is None else max(w1, b1)
         s0 = c0 if s0 is None else min(s0, c0)
         s1 = c1 if s1 is None else max(s1, c1)
+
+    if args.unwrap and w1 - w0 > 350:
+        print(
+            "unwrap produced a frame covering nearly the whole globe "
+            f"({w0:.1f} to {w1:.1f}); this does not look like a coherent region",
+            file=sys.stderr,
+        )
+        return 1
 
     lon_span = w1 - w0
     lat_span = s1 - s0
@@ -140,6 +159,11 @@ def main() -> int:
                     "features": len(features),
                     "frame": [[frame_west, frame_south], [frame_east, frame_north]],
                     "viewBox": [width, height],
+                    **(
+                        {"rotateLon": round((frame_west + frame_east) / 2, 1)}
+                        if args.unwrap
+                        else {}
+                    ),
                 },
                 indent=2,
             )
@@ -149,6 +173,11 @@ def main() -> int:
             f"wrote {out_path.relative_to(ROOT)} ({len(features)} features) · "
             f"frame [{frame_west}, {frame_south}] -> [{frame_east}, {frame_north}] · "
             f"viewBox [{width}, {height}]"
+            + (
+                f" · rotateLon {round((frame_west + frame_east) / 2, 1)}"
+                if args.unwrap
+                else ""
+            )
         )
     return 0
 
