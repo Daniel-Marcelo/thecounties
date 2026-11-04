@@ -3,6 +3,8 @@ export type Place = {
   name: string;
   group: string;
   aliases: string[];
+  /** Display-only label for the map. Never matched against guesses; leaves name free for answers. */
+  mapName?: string;
 };
 
 export type Pack = {

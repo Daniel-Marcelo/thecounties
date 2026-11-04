@@ -5,7 +5,7 @@ const CENTRAL = "Central";
 const CARIBBEAN = "Caribbean";
 
 const places: Place[] = [
-  { id: "ATG", name: "Antigua and Barbuda", group: CARIBBEAN, aliases: ["antigua"] },
+  { id: "ATG", name: "Antigua and Barbuda", group: CARIBBEAN, aliases: ["antigua"], mapName: "Antigua" },
   { id: "BHS", name: "Bahamas", group: CARIBBEAN, aliases: ["the bahamas"] },
   { id: "BRB", name: "Barbados", group: CARIBBEAN, aliases: [] },
   { id: "BLZ", name: "Belize", group: CENTRAL, aliases: [] },
@@ -13,7 +13,7 @@ const places: Place[] = [
   { id: "CRI", name: "Costa Rica", group: CENTRAL, aliases: [] },
   { id: "CUB", name: "Cuba", group: CARIBBEAN, aliases: [] },
   { id: "DMA", name: "Dominica", group: CARIBBEAN, aliases: [] },
-  { id: "DOM", name: "Dominican Republic", group: CARIBBEAN, aliases: ["dominican rep"] },
+  { id: "DOM", name: "Dominican Republic", group: CARIBBEAN, aliases: ["dominican rep"], mapName: "Dominican Rep." },
   { id: "SLV", name: "El Salvador", group: CENTRAL, aliases: [] },
   { id: "GRD", name: "Grenada", group: CARIBBEAN, aliases: [] },
   { id: "GTM", name: "Guatemala", group: CENTRAL, aliases: [] },
@@ -23,10 +23,10 @@ const places: Place[] = [
   { id: "MEX", name: "Mexico", group: CENTRAL, aliases: [] },
   { id: "NIC", name: "Nicaragua", group: CENTRAL, aliases: [] },
   { id: "PAN", name: "Panama", group: CENTRAL, aliases: [] },
-  { id: "KNA", name: "Saint Kitts and Nevis", group: CARIBBEAN, aliases: ["saint kitts", "st kitts", "st kitts and nevis"] },
-  { id: "LCA", name: "Saint Lucia", group: CARIBBEAN, aliases: ["st lucia"] },
-  { id: "VCT", name: "Saint Vincent and the Grenadines", group: CARIBBEAN, aliases: ["saint vincent", "st vincent", "st vincent and the grenadines"] },
-  { id: "TTO", name: "Trinidad and Tobago", group: CARIBBEAN, aliases: ["trinidad"] },
+  { id: "KNA", name: "Saint Kitts and Nevis", group: CARIBBEAN, aliases: ["saint kitts", "st kitts", "st kitts and nevis"], mapName: "St. Kitts" },
+  { id: "LCA", name: "Saint Lucia", group: CARIBBEAN, aliases: ["st lucia"], mapName: "St. Lucia" },
+  { id: "VCT", name: "Saint Vincent and the Grenadines", group: CARIBBEAN, aliases: ["saint vincent", "st vincent", "st vincent and the grenadines"], mapName: "St. Vincent" },
+  { id: "TTO", name: "Trinidad and Tobago", group: CARIBBEAN, aliases: ["trinidad"], mapName: "Trinidad" },
   { id: "USA", name: "United States", group: NORTHERN, aliases: ["united states of america", "america"] },
 ];
 
@@ -65,6 +65,7 @@ export const northAmericaPack: Pack = {
     "Jamaica",
     "Nicaragua",
     "Panama",
+    "Trinidad",
   ],
   stripPrefixes: ["the", "republic of"],
   mapLabel: "Map of the countries of North America",

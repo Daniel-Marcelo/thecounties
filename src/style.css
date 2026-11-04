@@ -186,6 +186,20 @@ h1 {
   stroke: rgba(244, 239, 228, 0.7);
 }
 
+.county-leader {
+  stroke: rgba(20, 12, 8, 0.4);
+  stroke-width: 1.25;
+  opacity: 0;
+}
+
+.county-leader.visible {
+  opacity: 1;
+}
+
+.county-leader.missed {
+  stroke: rgba(74, 61, 48, 0.7);
+}
+
 .rail {
   background: var(--card);
   border: 1px solid var(--line);
