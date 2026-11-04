@@ -2,7 +2,7 @@ import { copyFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } from "vite";
 
-const PACK_SLUGS = ["ireland", "brazil", "europe", "south-america", "asia", "oceania", "africa"] as const;
+const PACK_SLUGS = ["ireland", "brazil", "europe", "south-america", "north-america", "asia", "oceania", "africa"] as const;
 const GLOBLE_ROUTES: Record<string, string> = {
   "/globle": "/globle.html",
   "/globle/": "/globle.html",

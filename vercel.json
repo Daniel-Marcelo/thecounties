@@ -9,6 +9,8 @@
     { "source": "/europe/", "destination": "/pack" },
     { "source": "/south-america", "destination": "/pack" },
     { "source": "/south-america/", "destination": "/pack" },
+    { "source": "/north-america", "destination": "/pack" },
+    { "source": "/north-america/", "destination": "/pack" },
     { "source": "/asia", "destination": "/pack" },
     { "source": "/asia/", "destination": "/pack" },
     { "source": "/oceania", "destination": "/pack" },

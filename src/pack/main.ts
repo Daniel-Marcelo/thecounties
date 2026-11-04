@@ -4,6 +4,7 @@ import { asiaPack } from "./asia";
 import { startPack } from "./engine";
 import { europePack } from "./europe";
 import { irelandPack } from "./ireland";
+import { northAmericaPack } from "./north-america";
 import { oceaniaPack } from "./oceania";
 import { southAmericaPack } from "./south-america";
 import type { Pack } from "./types";
@@ -13,6 +14,7 @@ const PACKS: Record<string, Pack> = {
   brazil: brazilPack,
   europe: europePack,
   "south-america": southAmericaPack,
+  "north-america": northAmericaPack,
   asia: asiaPack,
   oceania: oceaniaPack,
   africa: africaPack,
