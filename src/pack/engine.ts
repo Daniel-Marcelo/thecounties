@@ -47,6 +47,11 @@ export function startPack(pack: Pack): void {
   const winTitle = document.querySelector<HTMLElement>("#win-title")!;
   const legend = document.querySelector<HTMLElement>("#legend")!;
 
+  const appEl = document.querySelector<HTMLElement>(".app");
+  const namedToggle = document.querySelector<HTMLButtonElement>("#named-toggle");
+  const railEl = document.querySelector<HTMLElement>(".rail");
+  const railClose = document.querySelector<HTMLButtonElement>("#rail-close");
+
   applyChrome();
 
   const map = new PackMap(mapSvg, pack);
@@ -94,6 +99,23 @@ export function startPack(pack: Pack): void {
     statusEl.dataset.kind = kind;
     statusEl.textContent = message;
   }
+
+  function setListOpen(open: boolean): void {
+    if (!appEl || !namedToggle) return;
+    appEl.classList.toggle("list-open", open);
+    namedToggle.setAttribute("aria-expanded", String(open));
+  }
+
+  namedToggle?.addEventListener("click", () => {
+    setListOpen(!appEl?.classList.contains("list-open"));
+  });
+  railClose?.addEventListener("click", () => setListOpen(false));
+  document.addEventListener("click", (event) => {
+    if (!appEl?.classList.contains("list-open")) return;
+    const target = event.target as Node | null;
+    if (railEl?.contains(target) || namedToggle?.contains(target)) return;
+    setListOpen(false);
+  });
 
   function hasProgress(): boolean {
     return found.size > 0 || guesses > 0 || finished;

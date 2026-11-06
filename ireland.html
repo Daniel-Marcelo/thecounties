@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="description" content="Name them all. A map quiz in the spirit of Globle." />
     <title>The Counties</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -45,8 +45,11 @@
           <svg id="map"></svg>
         </div>
 
-        <aside class="rail">
-          <h2>Named</h2>
+        <aside id="named" class="rail" aria-label="Named places">
+          <div class="rail-head">
+            <h2>Named</h2>
+            <button id="rail-close" type="button" class="ghost rail-close">Close</button>
+          </div>
           <ul id="found-list"></ul>
           <p id="legend" class="legend"></p>
         </aside>
@@ -68,6 +71,7 @@
           <button type="submit">Guess</button>
         </form>
         <div class="actions">
+          <button id="named-toggle" type="button" class="ghost named-toggle" aria-expanded="false" aria-controls="named">Named</button>
           <button id="give-up" type="button" class="ghost">Reveal remaining</button>
           <button id="start-over" type="button" class="ghost" hidden>Start over</button>
         </div>
