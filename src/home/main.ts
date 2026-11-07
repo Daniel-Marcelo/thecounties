@@ -36,11 +36,11 @@ function renderPackCard(card: Element, entry: HubEntry) {
       const best = bestText(entry);
       meta.textContent = best ? `The lot of them. · ${best}` : "The lot of them.";
     }
+    // The full-width bar takes its own line; the label sits quietly beneath.
+    progress.classList.add("done");
     bar.style.width = "100%";
     progress.appendChild(bar);
-    label.textContent = bestText(entry)
-      ? `${entry.found} of ${entry.total} · ${bestText(entry)}`
-      : `${entry.found} of ${entry.total}`;
+    label.textContent = `${entry.found} of ${entry.total}`;
   } else {
     bar.style.width = barWidth(entry.found, entry.total);
     progress.appendChild(bar);

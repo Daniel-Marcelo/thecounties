@@ -110,8 +110,8 @@ def main() -> int:
         assert_ok("finished: meta carries the best", "4:03" in meta_text,
                   meta_text)
         label_text = progress_label(ireland)
-        assert_ok("finished: label '32 of 32 · 4:03 best'",
-                  label_text == "32 of 32 · 4:03 best", label_text)
+        assert_ok("finished: label '32 of 32'",
+                  label_text == "32 of 32", label_text)
         bar = ireland.locator(".home-progress i")
         width = (bar.first.evaluate("el => el.style.width")
                  if bar.count() else "")
