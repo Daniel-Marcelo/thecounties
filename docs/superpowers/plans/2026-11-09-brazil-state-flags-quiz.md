@@ -55,7 +55,7 @@ A python script that, for each of the 27 sigla → Wikimedia Commons file title 
 - downloads the SVG to `public/flags/<fNN>.svg` per the fixed order above;
 - extracts from `extmetadata` the `LicenseShortName`, `Artist` (strip HTML tags), and page URL; writes a markdown line per file to `public/flags/ATTRIBUTION.md` with header `# Flag attribution` and one row `fNN (AC) — <title> — <license> — <artist> — <url>`;
 - refuses any payload larger than 400 KB (print the file title and exit non-zero) — keep official versions, but flag outliers for manual simplification;
-- verifies each saved file starts with `<svg` or `<?xml` and is > 1 KB; exits non-zero listing any fetch failure.
+- verifies each saved file starts with `<svg` or `<?xml`, parses as well-formed XML, and has an `<svg>` root (amended: the original "> 1 KB" floor was a truncation heuristic; several official Commons SVGs are legitimately < 1 KB — files below 1 KB warn but do not fail); exits non-zero listing any fetch failure.
 
 Mapping table (sigla → Commons file title; all are the official flag files):
 
