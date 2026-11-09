@@ -8,6 +8,11 @@ const GLOBLE_ROUTES: Record<string, string> = {
   "/globle/": "/globle.html",
 };
 
+const FLAGS_ROUTES: Record<string, string> = {
+  "/brazil-flags": "/brazil-flags.html",
+  "/brazil-flags/": "/brazil-flags.html",
+};
+
 const PACK_ROUTES: Record<string, string> = Object.fromEntries(
   PACK_SLUGS.flatMap((slug) => [
     [`/${slug}`, "/pack.html"],
@@ -18,7 +23,7 @@ const PACK_ROUTES: Record<string, string> = Object.fromEntries(
 function rewritePackRoutes(req: { url?: string }): void {
   const path = req.url?.split("?")[0] ?? "";
   const query = req.url?.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
-  const target = PACK_ROUTES[path] ?? GLOBLE_ROUTES[path];
+  const target = PACK_ROUTES[path] ?? GLOBLE_ROUTES[path] ?? FLAGS_ROUTES[path];
   if (target) req.url = `${target}${query}`;
 }
 
@@ -45,6 +50,9 @@ function packRoutes(): Plugin {
       const globleDir = resolve(outDir, "globle");
       mkdirSync(globleDir, { recursive: true });
       copyFileSync(resolve(outDir, "globle.html"), resolve(globleDir, "index.html"));
+      const flagsDir = resolve(outDir, "brazil-flags");
+      mkdirSync(flagsDir, { recursive: true });
+      copyFileSync(resolve(outDir, "brazil-flags.html"), resolve(flagsDir, "index.html"));
     },
   };
 }
@@ -60,6 +68,7 @@ export default defineConfig({
         main: resolve(__dirname, "index.html"),
         pack: resolve(__dirname, "pack.html"),
         globle: resolve(__dirname, "globle.html"),
+        "brazil-flags": resolve(__dirname, "brazil-flags.html"),
       },
     },
   },
