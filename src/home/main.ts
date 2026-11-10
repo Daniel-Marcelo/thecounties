@@ -86,7 +86,9 @@ function renderFlagsCard(card: Element) {
     if (best.score !== null) parts.push(`${formatPoints(best.score)} pts`);
     if (best.correct !== null) parts.push(`${best.correct}/${best.total}`);
     value.textContent = parts.join(" · ");
-    row.append(name, value);
+    // Whitespace text node keeps label and value apart even before the
+    // row gains flex styling (blank text nodes collapse once it does).
+    row.append(name, " ", value);
     card.appendChild(row);
   }
 
@@ -99,6 +101,11 @@ function renderFlagsCard(card: Element) {
   const progress = document.createElement("span");
   progress.className = "home-progress";
   progress.setAttribute("aria-hidden", "true");
+  // A full bar takes its own line (block layout) so the label never gets
+  // squeezed off the card — same remedy as finished pack cards.
+  if (bestCorrect.total > 0 && bestCorrect.correct >= bestCorrect.total) {
+    progress.classList.add("done");
+  }
   const bar = document.createElement("i");
   bar.style.width = barWidth(bestCorrect.correct, bestCorrect.total);
   const label = document.createElement("span");

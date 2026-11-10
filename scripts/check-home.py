@@ -30,7 +30,7 @@ PARTWAY_SESSION = ('{"foundIds":["Dublin","Cork","Mayo","Galway"],'
 FLAGS_FULL = "thecounties.flags.brazil.run.full"
 FLAGS_QUICK = "thecounties.flags.brazil.run.quick"
 FLAGS_FULL_VAL = ('{"bestScore":{"mode":"full","total":27,"correct":25,"score":24830,"playedAt":1000},'
-                  '"bestCorrect":{"mode":"full","total":27,"correct":27,"playedAt":2000}}')
+                  '"bestCorrect":{"mode":"full","total":27,"correct":27,"score":27110,"playedAt":2000}}')
 FLAGS_QUICK_VAL = ('{"bestScore":{"mode":"quick","total":10,"correct":10,"score":8910,"playedAt":1000},'
                    '"bestCorrect":null}')
 
@@ -172,9 +172,16 @@ def main() -> int:
                   "24,830 pts · 25/27" in rows_text, rows_text)
         assert_ok("flags: quick stat row",
                   "8,910 pts · 10/10" in rows_text, rows_text)
+        full_row_text = (rows.nth(0).text_content() or "").strip()
+        assert_ok("flags: full row has separator space",
+                  full_row_text == "Full run 24,830 pts · 25/27",
+                  full_row_text)
         flag_progress = flags.locator(".home-progress").count()
         assert_ok("flags: one progress element", flag_progress == 1,
                   f"found {flag_progress}")
+        progress_done = flags.locator(".home-progress.done").count()
+        assert_ok("flags: full bar gets done class", progress_done == 1,
+                  f"found {progress_done}")
         bar = flags.locator(".home-progress i")
         width = (bar.first.evaluate("el => el.style.width")
                  if bar.count() else "")
@@ -204,6 +211,49 @@ def main() -> int:
         assert_ok("corrupt flags: globle still reads its best",
                   label_text == "best 7 guesses", label_text)
         assert_ok("corrupt flags: no page errors", not errors, "; ".join(errors))
+        browser.close()
+
+        # 9. Flags best at phone width: a full (27/27) bar is 100% wide, so it
+        #    must take the done/block layout and never push the page wider
+        #    than the viewport.
+        FLAGS_QUICK_GONE_VAL = '{"bestScore":null,"bestCorrect":null}'
+        browser, page, errors = run_case(
+            p, base, {FLAGS_FULL: FLAGS_FULL_VAL, FLAGS_QUICK: FLAGS_QUICK_VAL},
+            viewport={"width": 390, "height": 844})
+        flags = page.locator("a.home-quiz[href='/brazil-flags']")
+        assert_ok("390px flags: full bar gets done class",
+                  flags.locator(".home-progress.done").count() == 1)
+        overflow = page.evaluate(
+            "({w: document.documentElement.scrollWidth, "
+            "c: document.documentElement.clientWidth})")
+        assert_ok("390px flags seed 27/27: no horizontal scroll",
+                  overflow["w"] <= overflow["c"], str(overflow))
+        assert_ok("390px flags seed 27/27: no page errors", not errors,
+                  "; ".join(errors))
+        browser.close()
+
+        #    Second context: a near-full NOT-done bar (quick 9/10), the other
+        #    end of the same squeeze risk.
+        FLAGS_QUICK_PART_VAL = ('{"bestScore":{"mode":"quick","total":10,"correct":9,'
+                                '"score":7910,"playedAt":1000},'
+                                '"bestCorrect":{"mode":"quick","total":10,"correct":9,'
+                                '"playedAt":2000}}')
+        browser, page, errors = run_case(
+            p, base, {FLAGS_FULL: FLAGS_QUICK_GONE_VAL,
+                      FLAGS_QUICK: FLAGS_QUICK_PART_VAL},
+            viewport={"width": 390, "height": 844})
+        flags = page.locator("a.home-quiz[href='/brazil-flags']")
+        overflow = page.evaluate(
+            "({w: document.documentElement.scrollWidth, "
+            "c: document.documentElement.clientWidth})")
+        # TODO(flags-style-8): label squeeze for near-full bars — Task 8 owns
+        # the layout fix. Quick 9/10 leaves the bar undone, and `.home-progress
+        # i` still eats the row, so the label overflows: pinned as a regression
+        # record until Task 8 changes the layout.
+        assert_ok("390px flags seed quick 9/10: overflow pinned for Task 8",
+                  overflow["w"] > overflow["c"], str(overflow))
+        assert_ok("390px flags seed quick 9/10: no page errors", not errors,
+                  "; ".join(errors))
         browser.close()
 
     print()
