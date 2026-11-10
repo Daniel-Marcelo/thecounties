@@ -105,8 +105,17 @@ h1 {
   text-align: left;
 }
 
-.icon-btn {
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   justify-self: end;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 44px;
   height: 44px;
   border-radius: 999px;
@@ -114,6 +123,16 @@ h1 {
   background: var(--card);
   color: var(--ink);
   cursor: pointer;
+}
+
+.icon-btn.home-btn {
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .icon-btn:hover {
+    background: var(--paper-deep);
+  }
 }
 
 /* A single slim strip of four counts, sized for a 320px screen. */
