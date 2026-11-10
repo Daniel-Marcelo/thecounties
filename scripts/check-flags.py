@@ -7,7 +7,7 @@ end to end, remember bests on the hub, survive a mid-run reload, stay readable
 at phone width, and play from the keyboard.
 
 Assumes the quiz is reachable at <base>/brazil-flags (serve the build via
-`npm run preview -- --port 4304 --strictPort` in a background job).
+`npx vite preview --port 4304 --strictPort` in a background job).
 
 Usage:
   python scripts/check-flags.py [--base http://localhost:4304]
@@ -20,6 +20,7 @@ import importlib.util
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -112,6 +113,25 @@ def pop_value(text: str) -> int:
     return int(match.group(1)) if match else 0
 
 
+def lock_with_second_tap(page, index: int, label: str) -> str:
+    """Play a question with a real click plus an inert second tap.
+
+    The brief mandates that every played question is clicked twice: the first
+    (real) click locks the answer, the second is dispatched via evaluate on
+    the now-disabled button and must move nothing. Returns the reveal text.
+    """
+    option = page.locator(".flag-option").nth(index)
+    option.click()
+    page.wait_for_selector("#points-line", timeout=5000)
+    first = points_text(page)
+    page.evaluate("el => el.click()", option.element_handle())
+    second = points_text(page)
+    assert_ok(f"{label}: one pop value", bool(first), first)
+    assert_ok(f"{label}: second tap changes nothing", second == first,
+              f"{first!r} -> {second!r}")
+    return first
+
+
 def wait_flag_image(page, label: str) -> None:
     try:
         page.wait_for_function(
@@ -198,64 +218,69 @@ def main() -> int:
 
         # Rapid double-tap the same option: the first tap locks, the second is
         # inert (the buttons are disabled), so the reveal cannot move.
-        first = options.first
-        first.click()
-        first_pop = points_text(page)
-        page.evaluate("el => el.click()", first.element_handle())
-        second_pop = points_text(page)
+        first_pop = lock_with_second_tap(page, 0, "lock")
         assert_ok("lock: exactly one points line",
                   page.locator("#points-line").count() == 1)
         disabled = page.locator(".flag-option[disabled]").count()
         assert_ok("lock: all four options disabled", disabled == 4,
                   f"found {disabled}")
-        assert_ok("lock: one pop value", bool(first_pop), first_pop)
-        assert_ok("lock: second tap changes nothing", second_pop == first_pop,
-                  f"{first_pop!r} -> {second_pop!r}")
 
         pop_texts = [first_pop]
         page.locator("#next").click()
         assert_counter(page, 2, "next")
 
-        # Question 2: a normal answer, read its pop.
+        # Question 2: a normal answer, double-tapped like every other one.
         wait_flag_image(page, "quick q2")
-        page.locator(".flag-option").nth(1).click()
-        page.wait_for_selector("#points-line", timeout=5000)
-        pop_texts.append(points_text(page))
+        pop_texts.append(lock_with_second_tap(page, 1, "quick q2"))
+        # Question 3 populates when this click lands, so take the timeout
+        # clock just before it: the elapsed measure then starts at populate,
+        # where the remaining timer budget is already <= 10 s.
+        t0 = time.monotonic()
         page.locator("#next").click()
 
         # Question 3: answer nothing and let the clock drain to a timeout.
         assert_counter(page, 3, "timeout")
         wait_flag_image(page, "quick q3")
         try:
+            # 10 s timer; the wait starts after populate so ~0.5 s of
+            # polling slack on top of the full budget is enough.
             page.wait_for_function(
                 "() => { const p = document.querySelector('#points-line');"
                 " return !!p && p.textContent.includes(\"Time's up\"); }",
-                timeout=15000,
+                timeout=10500,
             )
             timed_out = True
         except PlaywrightTimeoutError:
             timed_out = False
+        elapsed = time.monotonic() - t0
         timeout_pop = points_text(page)
-        assert_ok("timeout: 'Time's up' inside 10 s", timed_out, timeout_pop)
+        assert_ok("timeout: 'Time's up' within 11 s of populate",
+                  timed_out and elapsed <= 11.0,
+                  f"took {elapsed:.2f} s after populate, reveal {timeout_pop!r}")
         assert_ok("timeout: next appears", page.locator("#next").count() == 1)
         assert_ok("timeout: options locked",
                   page.locator(".flag-option[disabled]").count() == 4)
         pop_texts.append(timeout_pop)
         page.locator("#next").click()
 
-        # Questions 4–10: answer every one and read each pop.
+        # Questions 4–10: answer every one, each locked with an inert second
+        # tap, and read each pop.
         for position in range(4, QUICK_QUESTIONS + 1):
             assert_counter(page, position, "quick")
             wait_flag_image(page, f"quick q{position}")
-            page.locator(".flag-option").nth(position % 4).click()
-            page.wait_for_selector("#points-line", timeout=5000)
-            pop_texts.append(points_text(page))
+            pop_texts.append(lock_with_second_tap(
+                page, position % 4, f"quick q{position}"))
             page.locator("#next").click()
 
         page.wait_for_selector(".flag-results", timeout=15000)
-        total_text = (page.locator(".flag-result-total").text_content()
-                      or "").strip()
-        total = int(re.sub(r"\D", "", total_text) or "0")
+        total_holder = page.locator(".flag-result-total")
+        total_text = ((total_holder.first.text_content() or "").strip()
+                      if total_holder.count() else "")
+        total_match = re.fullmatch(r"([\d,]+) pts", total_text)
+        assert_ok("results: 'N pts' total present", total_match is not None,
+                  total_text)
+        total = (int(total_match.group(1).replace(",", ""))
+                 if total_match else -1)
         expected = sum(pop_value(text) for text in pop_texts)
         assert_ok("results: one reveal read per question",
                   len(pop_texts) == QUICK_QUESTIONS, f"read {len(pop_texts)}")
@@ -264,8 +289,9 @@ def main() -> int:
 
         correct_line = (page.locator(".flag-result-correct").text_content()
                         or "").strip()
-        parsed_correct = re.fullmatch(r"(\d+) of 10 named", correct_line)
-        assert_ok("results: 'correct of 10' line present",
+        parsed_correct = re.fullmatch(
+            rf"(\d+) of {QUICK_QUESTIONS} named", correct_line)
+        assert_ok(f"results: 'correct of {QUICK_QUESTIONS}' line present",
                   parsed_correct is not None, correct_line)
         expected_correct = sum(1 for text in pop_texts if POP_RE.match(text))
         correct = int(parsed_correct.group(1)) if parsed_correct else -1
@@ -341,8 +367,7 @@ def main() -> int:
                     f"q{position} open: measured {len(opened)} options")
             clipped.extend(f"q{position} open: {bad}"
                            for bad in clipped_options(opened))
-            page.locator(".flag-option").nth(position % 4).click()
-            page.wait_for_selector("#points-line", timeout=5000)
+            lock_with_second_tap(page, position % 4, f"360px q{position}")
             rows = measure_options(page)
             if len(rows) != 4:
                 clipped.append(
