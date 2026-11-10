@@ -11,6 +11,8 @@ const GLOBLE_ROUTES: Record<string, string> = {
 const FLAGS_ROUTES: Record<string, string> = {
   "/brazil-flags": "/brazil-flags.html",
   "/brazil-flags/": "/brazil-flags.html",
+  "/europe-flags": "/europe-flags.html",
+  "/europe-flags/": "/europe-flags.html",
 };
 
 const PACK_ROUTES: Record<string, string> = Object.fromEntries(
@@ -53,6 +55,12 @@ function packRoutes(): Plugin {
       const flagsDir = resolve(outDir, "brazil-flags");
       mkdirSync(flagsDir, { recursive: true });
       copyFileSync(resolve(outDir, "brazil-flags.html"), resolve(flagsDir, "index.html"));
+      const europeFlagsDir = resolve(outDir, "europe-flags");
+      mkdirSync(europeFlagsDir, { recursive: true });
+      copyFileSync(
+        resolve(outDir, "europe-flags.html"),
+        resolve(europeFlagsDir, "index.html"),
+      );
     },
   };
 }
@@ -69,6 +77,7 @@ export default defineConfig({
         pack: resolve(__dirname, "pack.html"),
         globle: resolve(__dirname, "globle.html"),
         "brazil-flags": resolve(__dirname, "brazil-flags.html"),
+        "europe-flags": resolve(__dirname, "europe-flags.html"),
       },
     },
   },

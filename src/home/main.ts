@@ -72,8 +72,8 @@ function formatPoints(points: number): string {
   return points.toLocaleString("en-US");
 }
 
-function renderFlagsCard(card: Element) {
-  const flags = readFlagsHubState();
+function renderFlagsCard(card: Element, slug: string) {
+  const flags = readFlagsHubState(slug);
   for (const mode of FLAG_MODES) {
     const best = flags[mode.key];
     if (best.score === null && best.correct === null) continue;
@@ -126,8 +126,8 @@ function render() {
   for (const card of document.querySelectorAll<HTMLAnchorElement>("a.home-quiz")) {
     const slug = slugFromCard(card);
     if (!slug) continue;
-    if (slug === "brazil-flags") {
-      renderFlagsCard(card);
+    if (slug === "brazil-flags" || slug === "europe-flags") {
+      renderFlagsCard(card, slug);
       continue;
     }
     const entry = state[slug];

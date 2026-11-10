@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Browser checks for the Brazil state flags quiz.
+"""Browser checks for a flags quiz (Brazil by default).
 
 The quiz should offer two modes, play a ten-question quick round with one
 instant lock and a clock that drains to a timeout, keep its own score honest
 end to end, remember bests on the hub, survive a mid-run reload, stay readable
 at phone width, and play from the keyboard.
 
-Assumes the quiz is reachable at <base>/brazil-flags (serve the build via
+Assumes the quiz is reachable at <base>/<slug> (serve the build via
 `npx vite preview --port 4304 --strictPort` in a background job).
 
 Usage:
   python scripts/check-flags.py [--base http://localhost:4304]
+      [--slug brazil-flags] [--total 27]
+      [--prefix thecounties.flags.brazil.run.]
 """
 
 from __future__ import annotations
@@ -28,8 +30,6 @@ from playwright.sync_api import sync_playwright
 
 PROBLEMS: list[str] = []
 
-QUICK_KEY = "thecounties.flags.brazil.run.quick"
-FULL_KEY = "thecounties.flags.brazil.run.full"
 QUICK_QUESTIONS = 10
 POP_RE = re.compile(r"^\+(\d+)\b")
 
@@ -57,8 +57,7 @@ def load_check_home():
     return module
 
 
-def open_page(p, base: str, path: str = "/brazil-flags",
-              seeds: dict[str, str] | None = None, viewport=None):
+def open_page(p, base: str, path: str, seeds: dict[str, str] | None = None, viewport=None):
     """Open a page at `path`, seed localStorage, reload, return the triple."""
     browser = p.chromium.launch(headless=True)
     context = browser.new_context(
@@ -176,16 +175,27 @@ def clipped_options(rows: list[dict]) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", default="http://localhost:4304")
+    parser.add_argument("--slug", default="brazil-flags",
+                        help="route slug, e.g. brazil-flags or europe-flags")
+    parser.add_argument("--total", type=int, default=27,
+                        help="full-run question count the page copy quotes")
+    parser.add_argument("--prefix", default="thecounties.flags.brazil.run.",
+                        help="localStorage prefix the quiz writes its bests to")
     args = parser.parse_args()
     base = args.base
-    print(f"Brazil state flags checks at {base}")
+    slug = args.slug
+    total = args.total
+    prefix = args.prefix
+    quick_key = f"{prefix}quick"
+    full_key = f"{prefix}full"
+    print(f"{slug} checks at {base}")
 
     with sync_playwright() as p:
         browser = None
         try:
             try:
                 # 1. Load and mode select: chrome, two modes, and the drain explainer.
-                browser, page, errors = open_page(p, base)
+                browser, page, errors = open_page(p, base, f"/{slug}")
                 assert_ok("load: h1 present", page.locator("h1").count() >= 1)
                 cards = page.locator(".flag-mode-card")
                 assert_ok("load: two mode cards", cards.count() == 2,
@@ -199,6 +209,8 @@ def main() -> int:
                 assert_ok("load: Full run and Quick round offered",
                           "Full run" in cards_text and "Quick round" in cards_text,
                           cards_text)
+                assert_ok(f"load: Full run quotes All {total} flags",
+                          f"All {total} flags" in cards_text, cards_text)
                 assert_ok("load: no page errors", not errors, "; ".join(errors))
             except Exception as exc:
                 print(f"  FAIL  case 1 load and mode select: {exc}")
@@ -305,7 +317,7 @@ def main() -> int:
                           correct == expected_correct,
                           f"{correct} vs {expected_correct}")
 
-                raw = page.evaluate("k => localStorage.getItem(k)", QUICK_KEY)
+                raw = page.evaluate("k => localStorage.getItem(k)", quick_key)
                 assert_ok("storage: quick key written", raw is not None)
                 try:
                     stored = json.loads(raw) if raw else None
@@ -326,13 +338,18 @@ def main() -> int:
 
         browser = None
         try:
-            # 3. Bests appear on the hub, seeded from check-home's own constant.
+            # 3. Bests appear on the hub, seeded from check-home's own constants
+            #    for this slug (the seeds stay single-sourced in check-home.py).
             check_home = load_check_home()
-            seeded = json.loads(check_home.FLAGS_FULL_VAL)
+            seed_values = {
+                "brazil-flags": check_home.FLAGS_FULL_VAL,
+                "europe-flags": check_home.EUROPE_FLAGS_FULL_VAL,
+            }
+            seeded = json.loads(seed_values[slug])
             best = seeded["bestScore"]
             browser, page, errors = open_page(
-                p, base, path="/", seeds={FULL_KEY: check_home.FLAGS_FULL_VAL})
-            flags = page.locator("a.home-quiz[href='/brazil-flags']")
+                p, base, path="/", seeds={full_key: seed_values[slug]})
+            flags = page.locator(f"a.home-quiz[href='/{slug}']")
             rows = flags.locator(".home-stat-row")
             assert_ok("hub: flags card has a stat row", rows.count() >= 1,
                       f"found {rows.count()}")
@@ -353,7 +370,7 @@ def main() -> int:
         browser = None
         try:
             # 4. Refresh mid-run: back to mode select, storage untouched.
-            browser, page, errors = open_page(p, base)
+            browser, page, errors = open_page(p, base, f"/{slug}")
             before = page.evaluate(
                 "() => Object.fromEntries(Object.entries(localStorage))")
             start_quick(page)
@@ -381,7 +398,7 @@ def main() -> int:
             # 5. Phone width: no clipped option text, no horizontal scrollbar, at
             #    every point of a quick round (before and after each lock).
             browser, page, errors = open_page(
-                p, base, viewport={"width": 360, "height": 740})
+                p, base, f"/{slug}", viewport={"width": 360, "height": 740})
             start_quick(page)
             clipped: list[str] = []
             wide: list[str] = []
@@ -421,7 +438,7 @@ def main() -> int:
         browser = None
         try:
             # 6. Keyboard: Digit1 locks, Enter on the focused Next advances.
-            browser, page, errors = open_page(p, base)
+            browser, page, errors = open_page(p, base, f"/{slug}")
             start_quick(page)
             assert_counter(page, 1, "keyboard")
             focused = page.evaluate(
@@ -457,7 +474,7 @@ def main() -> int:
     if PROBLEMS:
         print(f"FAILURES: {', '.join(sorted(set(PROBLEMS)))}")
         return 1
-    print("Brazil state flags checks: all passed.")
+    print(f"{slug} checks: all passed.")
     return 0
 
 

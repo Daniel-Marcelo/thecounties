@@ -34,6 +34,15 @@ FLAGS_FULL_VAL = ('{"bestScore":{"mode":"full","total":27,"correct":25,"score":2
 FLAGS_QUICK_VAL = ('{"bestScore":{"mode":"quick","total":10,"correct":10,"score":8910,"playedAt":1000},'
                    '"bestCorrect":null}')
 
+# A second flags quiz must keep its own bests — the card reads only its own
+# prefix, and Brazil's rows must stay quiet while Europe's speak.
+EUROPE_FLAGS_FULL = "thecounties.flags.europe.run.full"
+EUROPE_FLAGS_QUICK = "thecounties.flags.europe.run.quick"
+EUROPE_FLAGS_FULL_VAL = ('{"bestScore":{"mode":"full","total":46,"correct":41,"score":38270,"playedAt":1000},'
+                         '"bestCorrect":{"mode":"full","total":46,"correct":46,"score":44760,"playedAt":2000}}')
+EUROPE_FLAGS_QUICK_VAL = ('{"bestScore":{"mode":"quick","total":10,"correct":9,"score":8120,"playedAt":1000},'
+                          '"bestCorrect":null}')
+
 
 def assert_ok(name: str, condition: bool, detail: str = "") -> None:
     if condition:
@@ -251,6 +260,35 @@ def main() -> int:
                   overflow["w"] <= overflow["c"], str(overflow))
         assert_ok("390px flags seed quick 9/10: no page errors", not errors,
                   "; ".join(errors))
+        browser.close()
+
+        # 10. Europe flags card: reads only its own prefix; Brazil stays fresh.
+        browser, page, errors = run_case(
+            p, base, {EUROPE_FLAGS_FULL: EUROPE_FLAGS_FULL_VAL,
+                      EUROPE_FLAGS_QUICK: EUROPE_FLAGS_QUICK_VAL})
+        europe = page.locator("a.home-quiz[href='/europe-flags']")
+        rows = europe.locator(".home-stat-row")
+        assert_ok("europe flags: two stat rows", rows.count() == 2,
+                  f"found {rows.count()}")
+        rows_text = " | ".join(
+            (rows.nth(i).text_content() or "").strip()
+            for i in range(rows.count()))
+        assert_ok("europe flags: full stat row",
+                  "38,270 pts · 41/46" in rows_text, rows_text)
+        assert_ok("europe flags: quick stat row",
+                  "8,120 pts · 9/10" in rows_text, rows_text)
+        bar = europe.locator(".home-progress i")
+        width = (bar.first.evaluate("el => el.style.width")
+                 if bar.count() else "")
+        assert_ok("europe flags: full bar", width == "100%", width)
+        label_text = progress_label(europe)
+        assert_ok("europe flags: label 'Best full run: 46 of 46 flags'",
+                  label_text == "Best full run: 46 of 46 flags", label_text)
+        brazil = page.locator("a.home-quiz[href='/brazil-flags']")
+        assert_ok("europe flags: brazil card stays fresh",
+                  brazil.locator(".home-stat-row").count() == 0 and
+                  brazil.locator(".home-progress").count() == 0)
+        assert_ok("europe flags: no page errors", not errors, "; ".join(errors))
         browser.close()
 
     print()

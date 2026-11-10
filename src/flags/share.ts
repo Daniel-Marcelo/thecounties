@@ -22,7 +22,18 @@ const MODE_LABEL: Record<FlagResult["mode"], string> = {
   quick: "Quick round",
 };
 
-export async function renderFlagsShareCard(result: FlagResult): Promise<Blob> {
+/** Copy that varies between quizzes: the caption and the footer URL. */
+export type ShareCardCopy = {
+  /** Letter-spaced quiz caption, e.g. "BRAZIL · THE STATE FLAGS". */
+  caption: string;
+  /** Footer URL painted on the card, no scheme. */
+  footer: string;
+};
+
+export async function renderFlagsShareCard(
+  result: FlagResult,
+  copy: ShareCardCopy,
+): Promise<Blob> {
   try {
     await document.fonts.ready;
   } catch {
@@ -37,10 +48,10 @@ export async function renderFlagsShareCard(result: FlagResult): Promise<Blob> {
 
   paintPaper(ctx);
   paintFrame(ctx);
-  paintCaption(ctx, result);
+  paintCaption(ctx, result, copy.caption);
   paintScore(ctx, result);
   paintRing(ctx, result.score / Math.max(1, result.total) / 1000);
-  paintFooter(ctx);
+  paintFooter(ctx, copy.footer);
 
   return await toBlobPng(canvas);
 }
@@ -66,11 +77,11 @@ function paintFrame(ctx: CanvasRenderingContext2D): void {
   ctx.stroke();
 }
 
-function paintCaption(ctx: CanvasRenderingContext2D, result: FlagResult): void {
+function paintCaption(ctx: CanvasRenderingContext2D, result: FlagResult, caption: string): void {
   ctx.textAlign = "left";
   ctx.fillStyle = MUTED;
   ctx.font = '800 22px Nunito, Verdana, sans-serif';
-  paintSpaced(ctx, "BRAZIL · THE STATE FLAGS", 88, 128, 4.5);
+  paintSpaced(ctx, caption, 88, 128, 4.5);
 
   ctx.fillStyle = INK;
   ctx.font = '700 30px Nunito, Verdana, sans-serif';
@@ -144,11 +155,11 @@ function paintRing(ctx: CanvasRenderingContext2D, rawFraction: number): void {
   ctx.fillText("of possible", centerX, centerY + 56);
 }
 
-function paintFooter(ctx: CanvasRenderingContext2D): void {
+function paintFooter(ctx: CanvasRenderingContext2D, footer: string): void {
   ctx.textAlign = "left";
   ctx.fillStyle = MUTED;
   ctx.font = '700 20px Nunito, Verdana, sans-serif';
-  ctx.fillText("thecounties.vercel.app/brazil-flags", 88, 600);
+  ctx.fillText(footer, 88, 600);
 }
 
 /** Canvas letter-spacing is not portable, so draw the characters ourselves. */

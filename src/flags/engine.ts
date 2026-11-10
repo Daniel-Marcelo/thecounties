@@ -1,7 +1,7 @@
 import {
+  DISTRACTOR_COUNT,
   FLAG_MAX_POINTS,
   FLAG_QUESTION_MS,
-  stateFlags,
   type StateFlag,
 } from "./data";
 
@@ -20,9 +20,8 @@ export type FlagBests = {
   bestCorrect: FlagResult | null;
 };
 
-const STORAGE_PREFIX = "thecounties.flags.brazil.run.";
-const QUICK_QUESTION_COUNT = 10;
-const DISTRACTOR_COUNT = 3;
+/** Quick-round length when the caller passes no explicit count. */
+const QUICK_DEFAULT = 10;
 
 function shuffle<T>(items: readonly T[]): T[] {
   const copy = [...items];
@@ -48,14 +47,17 @@ function pickDistractors(answer: StateFlag, all: StateFlag[]): string[] {
   return picks.map((flag) => flag.id);
 }
 
-export function buildRun(mode: FlagMode): FlagRun {
-  const flags = stateFlags();
-  const answers = shuffle(flags);
-  const selected = mode === "quick" ? answers.slice(0, QUICK_QUESTION_COUNT) : answers;
+export function buildRun(
+  bank: readonly StateFlag[],
+  mode: FlagMode,
+  quickCount: number = QUICK_DEFAULT,
+): FlagRun {
+  const answers = shuffle(bank);
+  const selected = mode === "quick" ? answers.slice(0, quickCount) : answers;
 
   const questions = selected.map((answer) => ({
     answerId: answer.id,
-    options: shuffle([answer.id, ...pickDistractors(answer, flags)]),
+    options: shuffle([answer.id, ...pickDistractors(answer, [...bank])]),
   }));
 
   return { mode, questions };
@@ -70,8 +72,8 @@ export function scoreFor(remainingMs: number): number {
   );
 }
 
-function storageKey(mode: FlagMode): string {
-  return `${STORAGE_PREFIX}${mode}`;
+function storageKey(mode: FlagMode, storagePrefix: string): string {
+  return `${storagePrefix}${mode}`;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -98,12 +100,12 @@ function resultFrom(value: unknown, mode: FlagMode): FlagResult | null | undefin
   return isValidResult(value, mode) ? value : undefined;
 }
 
-export function readBests(mode: FlagMode): FlagBests {
+export function readBests(mode: FlagMode, storagePrefix: string): FlagBests {
   const empty: FlagBests = { bestScore: null, bestCorrect: null };
 
   let raw: string | null;
   try {
-    raw = localStorage.getItem(storageKey(mode));
+    raw = localStorage.getItem(storageKey(mode, storagePrefix));
   } catch {
     return empty;
   }
@@ -124,8 +126,8 @@ export function readBests(mode: FlagMode): FlagBests {
   }
 }
 
-export function saveResult(result: FlagResult): void {
-  const current = readBests(result.mode);
+export function saveResult(result: FlagResult, storagePrefix: string): void {
+  const current = readBests(result.mode, storagePrefix);
   let bestScore = current.bestScore;
   let bestCorrect = current.bestCorrect;
   let changed = false;
@@ -142,7 +144,7 @@ export function saveResult(result: FlagResult): void {
 
   try {
     localStorage.setItem(
-      storageKey(result.mode),
+      storageKey(result.mode, storagePrefix),
       JSON.stringify({ bestScore, bestCorrect }),
     );
   } catch {

@@ -187,7 +187,7 @@ def main() -> int:
             print(f"  - {failure}", file=sys.stderr)
         return 1
 
-    attribution = OUT_DIR / "ATTRIBUTION.md"
+    attribution = OUT_DIR / "brazil-ATTRIBUTION.md"
     attribution.write_text(
         "# Flag attribution\n\n" + "\n".join(rows) + "\n", encoding="utf-8"
     )

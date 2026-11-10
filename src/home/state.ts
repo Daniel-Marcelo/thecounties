@@ -113,10 +113,17 @@ export function readHubState(): HubState {
   return state;
 }
 
-const FLAGS_STORAGE_PREFIX = "thecounties.flags.brazil.run.";
-
-/** Question counts the flags quiz runs with, per mode. */
-const FLAG_TOTALS: Record<"full" | "quick", number> = { full: 27, quick: 10 };
+/** Per-quiz storage prefixes and question counts the hub cards quote. */
+const FLAGS_QUIZZES: Record<string, { storagePrefix: string; totals: Record<"full" | "quick", number> }> = {
+  "brazil-flags": {
+    storagePrefix: "thecounties.flags.brazil.run.",
+    totals: { full: 27, quick: 10 },
+  },
+  "europe-flags": {
+    storagePrefix: "thecounties.flags.europe.run.",
+    totals: { full: 46, quick: 10 },
+  },
+};
 
 type FlagRecord = { total: number; correct: number; score: number | null };
 
@@ -136,17 +143,17 @@ function readFlagRecord(value: unknown, mode: string): FlagRecord | null {
   return { total, correct, score: finiteNumber(rec.score) };
 }
 
-function readFlagMode(mode: "full" | "quick"): FlagModeBest {
+function readFlagMode(mode: "full" | "quick", quiz: (typeof FLAGS_QUIZZES)[string]): FlagModeBest {
   const best: FlagModeBest = {
     score: null,
     correct: null,
-    total: FLAG_TOTALS[mode],
+    total: quiz.totals[mode],
     bestCorrect: null,
   };
 
   let raw: string | null;
   try {
-    raw = localStorage.getItem(`${FLAGS_STORAGE_PREFIX}${mode}`);
+    raw = localStorage.getItem(`${quiz.storagePrefix}${mode}`);
   } catch {
     return best;
   }
@@ -193,8 +200,20 @@ function readFlagMode(mode: "full" | "quick"): FlagModeBest {
 
 /**
  * The flags quiz keeps two bests per mode; the hub card reads them all.
- * Corrupt or missing records read as nulls rather than errors.
+ * Corrupt or missing records read as nulls rather than errors. The card's
+ * route slug picks which quiz's storage it reflects.
  */
-export function readFlagsHubState(): FlagsHubState {
-  return { full: readFlagMode("full"), quick: readFlagMode("quick") };
+export function readFlagsHubState(slug: string): FlagsHubState {
+  const quiz = FLAGS_QUIZZES[slug];
+  if (!quiz) {
+    const empty: Record<"full" | "quick", FlagModeBest> = {
+      full: { score: null, correct: null, total: 0, bestCorrect: null },
+      quick: { score: null, correct: null, total: 0, bestCorrect: null },
+    };
+    return empty as FlagsHubState;
+  }
+  return {
+    full: readFlagMode("full", quiz),
+    quick: readFlagMode("quick", quiz),
+  };
 }
