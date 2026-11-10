@@ -5,7 +5,8 @@ export type StateFlag = { id: string; name: string; group: string };
 export const FLAG_QUESTION_MS = 10000;
 export const FLAG_MAX_POINTS = 1000;
 
-// Task 1's fixed asset join: the order of `brazilPack.places` maps onto f01…f27.
+// Asset join keyed by state id (sigla → fNN file name). The mapping is
+// id-keyed: brazilPack.places order is never relied on.
 const FLAG_ASSETS: Record<string, string> = {
   AC: "f01",
   AL: "f02",
