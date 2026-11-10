@@ -7,6 +7,21 @@
       name="description"
       content="Map quizzes from The Counties — name them all, or guess the place."
     />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="The Counties" />
+    <meta property="og:title" content="The Counties — Map quizzes" />
+    <meta
+      property="og:description"
+      content="Name them all, or guess the place. Fill the map, no login, no list."
+    />
+    <meta property="og:url" content="https://thecounties.vercel.app/" />
+    <meta property="og:image" content="https://thecounties.vercel.app/og-card.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="The Counties — Map quizzes" />
+    <meta
+      name="twitter:description"
+      content="Name them all, or guess the place. Fill the map, no login, no list."
+    />
     <title>The Counties — Map quizzes</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -98,11 +113,25 @@
             </li>
           </ul>
         </section>
+
+        <section class="home-section" aria-labelledby="multiple-choice">
+          <h2 id="multiple-choice">Multiple choice</h2>
+          <ul class="home-list">
+            <li>
+              <a class="home-quiz" href="/brazil-flags">
+                <span class="home-quiz-title">Brazil — The State Flags</span>
+                <span class="home-quiz-meta">27 flags</span>
+                <span class="home-quiz-blurb">Four answers. One clock. No going back.</span>
+              </a>
+            </li>
+          </ul>
+        </section>
       </main>
 
       <footer class="home-footer">
         <p class="credit">Geography quizzes · open map data</p>
       </footer>
     </div>
+    <script type="module" src="/src/home/main.ts"></script>
   </body>
 </html>

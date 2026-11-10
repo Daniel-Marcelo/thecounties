@@ -18,6 +18,8 @@
     { "source": "/africa", "destination": "/pack" },
     { "source": "/africa/", "destination": "/pack" },
     { "source": "/globle", "destination": "/globle" },
-    { "source": "/globle/", "destination": "/globle" }
+    { "source": "/globle/", "destination": "/globle" },
+    { "source": "/brazil-flags", "destination": "/brazil-flags" },
+    { "source": "/brazil-flags/", "destination": "/brazil-flags" }
   ]
 }
