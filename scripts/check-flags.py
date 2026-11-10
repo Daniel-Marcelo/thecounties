@@ -181,238 +181,277 @@ def main() -> int:
     print(f"Brazil state flags checks at {base}")
 
     with sync_playwright() as p:
-        # 1. Load and mode select: chrome, two modes, and the drain explainer.
-        browser, page, errors = open_page(p, base)
-        assert_ok("load: h1 present", page.locator("h1").count() >= 1)
-        cards = page.locator(".flag-mode-card")
-        assert_ok("load: two mode cards", cards.count() == 2,
-                  f"found {cards.count()}")
-        explainer = (page.locator(".flag-explainer").first.text_content()
-                     or "").strip()
-        assert_ok("load: drain explainer present",
-                  "draining with the timer" in explainer, explainer)
-        cards_text = " | ".join((cards.nth(i).text_content() or "").strip()
-                                for i in range(cards.count()))
-        assert_ok("load: Full run and Quick round offered",
-                  "Full run" in cards_text and "Quick round" in cards_text,
-                  cards_text)
-        assert_ok("load: no page errors", not errors, "; ".join(errors))
-
-        # 2. Quick round: one lock per question, a timeout, honest totals.
-        start_quick(page)
-        assert_counter(page, 1, "quick")
-        options = page.locator(".flag-option")
-        assert_ok("quick q1: exactly four options", options.count() == 4,
-                  f"found {options.count()}")
-        names = [(options.nth(i).text_content() or "").strip()
-                 for i in range(options.count())]
-        assert_ok("quick q1: every option has a name", all(names), repr(names))
-        state_names = [(options.nth(i).locator(".flag-option-name").text_content()
-                        or "").strip()
-                       for i in range(options.count())]
-        assert_ok("quick q1: every option names a state", all(state_names),
-                  repr(state_names))
-        assert_ok("quick q1: timer bar present",
-                  page.locator("#timer-bar").count() == 1)
-        wait_flag_image(page, "quick q1")
-
-        # Rapid double-tap the same option: the first tap locks, the second is
-        # inert (the buttons are disabled), so the reveal cannot move.
-        first_pop = lock_with_second_tap(page, 0, "lock")
-        assert_ok("lock: exactly one points line",
-                  page.locator("#points-line").count() == 1)
-        disabled = page.locator(".flag-option[disabled]").count()
-        assert_ok("lock: all four options disabled", disabled == 4,
-                  f"found {disabled}")
-
-        pop_texts = [first_pop]
-        page.locator("#next").click()
-        assert_counter(page, 2, "next")
-
-        # Question 2: a normal answer, double-tapped like every other one.
-        wait_flag_image(page, "quick q2")
-        pop_texts.append(lock_with_second_tap(page, 1, "quick q2"))
-        # Question 3 populates when this click lands, so take the timeout
-        # clock just before it: the elapsed measure then starts at populate,
-        # where the remaining timer budget is already <= 10 s.
-        t0 = time.monotonic()
-        page.locator("#next").click()
-
-        # Question 3: answer nothing and let the clock drain to a timeout.
-        assert_counter(page, 3, "timeout")
-        wait_flag_image(page, "quick q3")
+        browser = None
         try:
-            # 10 s timer; the wait starts after populate so ~0.5 s of
-            # polling slack on top of the full budget is enough.
-            page.wait_for_function(
-                "() => { const p = document.querySelector('#points-line');"
-                " return !!p && p.textContent.includes(\"Time's up\"); }",
-                timeout=10500,
-            )
-            timed_out = True
-        except PlaywrightTimeoutError:
-            timed_out = False
-        elapsed = time.monotonic() - t0
-        timeout_pop = points_text(page)
-        assert_ok("timeout: 'Time's up' within 11 s of populate",
-                  timed_out and elapsed <= 11.0,
-                  f"took {elapsed:.2f} s after populate, reveal {timeout_pop!r}")
-        assert_ok("timeout: next appears", page.locator("#next").count() == 1)
-        assert_ok("timeout: options locked",
-                  page.locator(".flag-option[disabled]").count() == 4)
-        pop_texts.append(timeout_pop)
-        page.locator("#next").click()
+            try:
+                # 1. Load and mode select: chrome, two modes, and the drain explainer.
+                browser, page, errors = open_page(p, base)
+                assert_ok("load: h1 present", page.locator("h1").count() >= 1)
+                cards = page.locator(".flag-mode-card")
+                assert_ok("load: two mode cards", cards.count() == 2,
+                          f"found {cards.count()}")
+                explainer = (page.locator(".flag-explainer").first.text_content()
+                             or "").strip()
+                assert_ok("load: drain explainer present",
+                          "draining with the timer" in explainer, explainer)
+                cards_text = " | ".join((cards.nth(i).text_content() or "").strip()
+                                        for i in range(cards.count()))
+                assert_ok("load: Full run and Quick round offered",
+                          "Full run" in cards_text and "Quick round" in cards_text,
+                          cards_text)
+                assert_ok("load: no page errors", not errors, "; ".join(errors))
+            except Exception as exc:
+                print(f"  FAIL  case 1 load and mode select: {exc}")
+                PROBLEMS.append(f"case 1 load and mode select: {exc}")
+            try:
+                # 2. Quick round: one lock per question, a timeout, honest totals.
+                start_quick(page)
+                assert_counter(page, 1, "quick")
+                options = page.locator(".flag-option")
+                assert_ok("quick q1: exactly four options", options.count() == 4,
+                          f"found {options.count()}")
+                names = [(options.nth(i).text_content() or "").strip()
+                         for i in range(options.count())]
+                assert_ok("quick q1: every option has a name", all(names), repr(names))
+                state_names = [(options.nth(i).locator(".flag-option-name").text_content()
+                                or "").strip()
+                               for i in range(options.count())]
+                assert_ok("quick q1: every option names a state", all(state_names),
+                          repr(state_names))
+                assert_ok("quick q1: timer bar present",
+                          page.locator("#timer-bar").count() == 1)
+                wait_flag_image(page, "quick q1")
 
-        # Questions 4–10: answer every one, each locked with an inert second
-        # tap, and read each pop.
-        for position in range(4, QUICK_QUESTIONS + 1):
-            assert_counter(page, position, "quick")
-            wait_flag_image(page, f"quick q{position}")
-            pop_texts.append(lock_with_second_tap(
-                page, position % 4, f"quick q{position}"))
-            page.locator("#next").click()
+                # Rapid double-tap the same option: the first tap locks, the second is
+                # inert (the buttons are disabled), so the reveal cannot move.
+                first_pop = lock_with_second_tap(page, 0, "lock")
+                assert_ok("lock: exactly one points line",
+                          page.locator("#points-line").count() == 1)
+                disabled = page.locator(".flag-option[disabled]").count()
+                assert_ok("lock: all four options disabled", disabled == 4,
+                          f"found {disabled}")
 
-        page.wait_for_selector(".flag-results", timeout=15000)
-        total_holder = page.locator(".flag-result-total")
-        total_text = ((total_holder.first.text_content() or "").strip()
-                      if total_holder.count() else "")
-        total_match = re.fullmatch(r"([\d,]+) pts", total_text)
-        assert_ok("results: 'N pts' total present", total_match is not None,
-                  total_text)
-        total = (int(total_match.group(1).replace(",", ""))
-                 if total_match else -1)
-        expected = sum(pop_value(text) for text in pop_texts)
-        assert_ok("results: one reveal read per question",
-                  len(pop_texts) == QUICK_QUESTIONS, f"read {len(pop_texts)}")
-        assert_ok(f"results: total {total} is the sum of the pops",
-                  total == expected, f"expected {expected} from {pop_texts}")
+                pop_texts = [first_pop]
+                page.locator("#next").click()
+                assert_counter(page, 2, "next")
 
-        correct_line = (page.locator(".flag-result-correct").text_content()
-                        or "").strip()
-        parsed_correct = re.fullmatch(
-            rf"(\d+) of {QUICK_QUESTIONS} named", correct_line)
-        assert_ok(f"results: 'correct of {QUICK_QUESTIONS}' line present",
-                  parsed_correct is not None, correct_line)
-        expected_correct = sum(1 for text in pop_texts if POP_RE.match(text))
-        correct = int(parsed_correct.group(1)) if parsed_correct else -1
-        assert_ok("results: correct count matches the reveals",
-                  correct == expected_correct,
-                  f"{correct} vs {expected_correct}")
+                # Question 2: a normal answer, double-tapped like every other one.
+                wait_flag_image(page, "quick q2")
+                pop_texts.append(lock_with_second_tap(page, 1, "quick q2"))
+                # Question 3 populates when this click lands, so take the timeout
+                # clock just before it: the elapsed measure then starts at populate,
+                # where the remaining timer budget is already <= 10 s.
+                t0 = time.monotonic()
+                page.locator("#next").click()
 
-        raw = page.evaluate("k => localStorage.getItem(k)", QUICK_KEY)
-        assert_ok("storage: quick key written", raw is not None)
+                # Question 3: answer nothing and let the clock drain to a timeout.
+                assert_counter(page, 3, "timeout")
+                wait_flag_image(page, "quick q3")
+                try:
+                    # 10 s timer; the wait starts after populate so ~0.5 s of
+                    # polling slack on top of the full budget is enough.
+                    page.wait_for_function(
+                        "() => { const p = document.querySelector('#points-line');"
+                        " return !!p && p.textContent.includes(\"Time's up\"); }",
+                        timeout=10500,
+                    )
+                    timed_out = True
+                except PlaywrightTimeoutError:
+                    timed_out = False
+                elapsed = time.monotonic() - t0
+                timeout_pop = points_text(page)
+                assert_ok("timeout: 'Time's up' within 11 s of populate",
+                          timed_out and elapsed <= 11.0,
+                          f"took {elapsed:.2f} s after populate, reveal {timeout_pop!r}")
+                assert_ok("timeout: next appears", page.locator("#next").count() == 1)
+                assert_ok("timeout: options locked",
+                          page.locator(".flag-option[disabled]").count() == 4)
+                pop_texts.append(timeout_pop)
+                page.locator("#next").click()
+
+                # Questions 4–10: answer every one, each locked with an inert second
+                # tap, and read each pop.
+                for position in range(4, QUICK_QUESTIONS + 1):
+                    assert_counter(page, position, "quick")
+                    wait_flag_image(page, f"quick q{position}")
+                    pop_texts.append(lock_with_second_tap(
+                        page, position % 4, f"quick q{position}"))
+                    page.locator("#next").click()
+
+                page.wait_for_selector(".flag-results", timeout=15000)
+                total_holder = page.locator(".flag-result-total")
+                total_text = ((total_holder.first.text_content() or "").strip()
+                              if total_holder.count() else "")
+                total_match = re.fullmatch(r"([\d,]+) pts", total_text)
+                assert_ok("results: 'N pts' total present", total_match is not None,
+                          total_text)
+                total = (int(total_match.group(1).replace(",", ""))
+                         if total_match else -1)
+                expected = sum(pop_value(text) for text in pop_texts)
+                assert_ok("results: one reveal read per question",
+                          len(pop_texts) == QUICK_QUESTIONS, f"read {len(pop_texts)}")
+                assert_ok(f"results: total {total} is the sum of the pops",
+                          total == expected, f"expected {expected} from {pop_texts}")
+
+                correct_line = (page.locator(".flag-result-correct").text_content()
+                                or "").strip()
+                parsed_correct = re.fullmatch(
+                    rf"(\d+) of {QUICK_QUESTIONS} named", correct_line)
+                assert_ok(f"results: 'correct of {QUICK_QUESTIONS}' line present",
+                          parsed_correct is not None, correct_line)
+                expected_correct = sum(1 for text in pop_texts if POP_RE.match(text))
+                correct = int(parsed_correct.group(1)) if parsed_correct else -1
+                assert_ok("results: correct count matches the reveals",
+                          correct == expected_correct,
+                          f"{correct} vs {expected_correct}")
+
+                raw = page.evaluate("k => localStorage.getItem(k)", QUICK_KEY)
+                assert_ok("storage: quick key written", raw is not None)
+                try:
+                    stored = json.loads(raw) if raw else None
+                except json.JSONDecodeError:
+                    stored = None
+                best = (stored or {}).get("bestScore")
+                assert_ok("storage: quick record parses", isinstance(stored, dict))
+                assert_ok("storage: bestScore.score equals the results total",
+                          isinstance(best, dict) and best.get("score") == total,
+                          f"{best} vs {total}")
+                assert_ok("quick round: no page errors", not errors, "; ".join(errors))
+            except Exception as exc:
+                print(f"  FAIL  case 2 quick round: {exc}")
+                PROBLEMS.append(f"case 2 quick round: {exc}")
+        finally:
+            if browser is not None:
+                browser.close()
+
+        browser = None
         try:
-            stored = json.loads(raw) if raw else None
-        except json.JSONDecodeError:
-            stored = None
-        best = (stored or {}).get("bestScore")
-        assert_ok("storage: quick record parses", isinstance(stored, dict))
-        assert_ok("storage: bestScore.score equals the results total",
-                  isinstance(best, dict) and best.get("score") == total,
-                  f"{best} vs {total}")
-        assert_ok("quick round: no page errors", not errors, "; ".join(errors))
-        browser.close()
+            # 3. Bests appear on the hub, seeded from check-home's own constant.
+            check_home = load_check_home()
+            seeded = json.loads(check_home.FLAGS_FULL_VAL)
+            best = seeded["bestScore"]
+            browser, page, errors = open_page(
+                p, base, path="/", seeds={FULL_KEY: check_home.FLAGS_FULL_VAL})
+            flags = page.locator("a.home-quiz[href='/brazil-flags']")
+            rows = flags.locator(".home-stat-row")
+            assert_ok("hub: flags card has a stat row", rows.count() >= 1,
+                      f"found {rows.count()}")
+            rows_text = " | ".join((rows.nth(i).text_content() or "").strip()
+                                   for i in range(rows.count()))
+            expected_row = (f"Full run {best['score']:,} pts · "
+                            f"{best['correct']}/{best['total']}")
+            assert_ok("hub: full run best row", expected_row in rows_text,
+                      rows_text)
+            assert_ok("hub: no page errors", not errors, "; ".join(errors))
+        except Exception as exc:
+            print(f"  FAIL  case 3 hub bests: {exc}")
+            PROBLEMS.append(f"case 3 hub bests: {exc}")
+        finally:
+            if browser is not None:
+                browser.close()
 
-        # 3. Bests appear on the hub, seeded from check-home's own constant.
-        check_home = load_check_home()
-        seeded = json.loads(check_home.FLAGS_FULL_VAL)
-        best = seeded["bestScore"]
-        browser, page, errors = open_page(
-            p, base, path="/", seeds={FULL_KEY: check_home.FLAGS_FULL_VAL})
-        flags = page.locator("a.home-quiz[href='/brazil-flags']")
-        rows = flags.locator(".home-stat-row")
-        assert_ok("hub: flags card has a stat row", rows.count() >= 1,
-                  f"found {rows.count()}")
-        rows_text = " | ".join((rows.nth(i).text_content() or "").strip()
-                               for i in range(rows.count()))
-        expected_row = (f"Full run {best['score']:,} pts · "
-                        f"{best['correct']}/{best['total']}")
-        assert_ok("hub: full run best row", expected_row in rows_text,
-                  rows_text)
-        assert_ok("hub: no page errors", not errors, "; ".join(errors))
-        browser.close()
-
-        # 4. Refresh mid-run: back to mode select, storage untouched.
-        browser, page, errors = open_page(p, base)
-        before = page.evaluate(
-            "() => Object.fromEntries(Object.entries(localStorage))")
-        start_quick(page)
-        assert_counter(page, 1, "reload")
-        page.locator(".flag-option").first.click()
-        page.wait_for_selector("#points-line", timeout=5000)
-        page.reload()
-        page.wait_for_load_state("networkidle")
-        assert_ok("reload: back at mode select",
-                  page.locator(".flag-modes-view").count() == 1)
-        after = page.evaluate(
-            "() => Object.fromEntries(Object.entries(localStorage))")
-        assert_ok("reload: storage unchanged", before == after,
-                  f"{before} -> {after}")
-        assert_ok("reload: no page errors", not errors, "; ".join(errors))
-        browser.close()
-
-        # 5. Phone width: no clipped option text, no horizontal scrollbar, at
-        #    every point of a quick round (before and after each lock).
-        browser, page, errors = open_page(
-            p, base, viewport={"width": 360, "height": 740})
-        start_quick(page)
-        clipped: list[str] = []
-        wide: list[str] = []
-        for position in range(1, QUICK_QUESTIONS + 1):
-            assert_counter(page, position, "360px")
-            wait_flag_image(page, f"360px q{position}")
-            opened = measure_options(page)
-            if len(opened) != 4:
-                clipped.append(
-                    f"q{position} open: measured {len(opened)} options")
-            clipped.extend(f"q{position} open: {bad}"
-                           for bad in clipped_options(opened))
-            lock_with_second_tap(page, position % 4, f"360px q{position}")
-            rows = measure_options(page)
-            if len(rows) != 4:
-                clipped.append(
-                    f"q{position} locked: measured {len(rows)} options")
-            clipped.extend(f"q{position} locked: {bad}"
-                           for bad in clipped_options(rows))
-            size = page.evaluate(
-                "({w: document.documentElement.scrollWidth,"
-                " c: document.documentElement.clientWidth})")
-            if size["w"] > 361:
-                wide.append(f"q{position}: {size}")
-            page.locator("#next").click()
-        assert_ok("360px: option text never clipped", not clipped,
-                  "; ".join(clipped))
-        assert_ok("360px: no horizontal scrollbar", not wide, "; ".join(wide))
-        assert_ok("360px: no page errors", not errors, "; ".join(errors))
-        browser.close()
-
-        # 6. Keyboard: Digit1 locks, Enter on the focused Next advances.
-        browser, page, errors = open_page(p, base)
-        start_quick(page)
-        assert_counter(page, 1, "keyboard")
-        focused = page.evaluate(
-            "() => (document.activeElement && document.activeElement.className)"
-            " || ''")
-        assert_ok("keyboard: question view takes focus",
-                  "flag-question" in focused, focused)
-        page.keyboard.press("Digit1")
-        page.wait_for_selector("#points-line", timeout=5000)
-        assert_ok("keyboard: Digit1 locks",
-                  page.locator(".flag-option[disabled]").count() == 4)
-        assert_ok("keyboard: Digit1 reveal", bool(points_text(page)),
-                  points_text(page))
+        browser = None
         try:
-            page.wait_for_function(
-                "() => document.activeElement"
-                " && document.activeElement.id === 'next'", timeout=5000)
-            next_focused = True
-        except PlaywrightTimeoutError:
-            next_focused = False
-        assert_ok("keyboard: Next takes focus", next_focused)
-        page.keyboard.press("Enter")
-        assert_counter(page, 2, "keyboard: Enter")
-        assert_ok("keyboard: no page errors", not errors, "; ".join(errors))
-        browser.close()
+            # 4. Refresh mid-run: back to mode select, storage untouched.
+            browser, page, errors = open_page(p, base)
+            before = page.evaluate(
+                "() => Object.fromEntries(Object.entries(localStorage))")
+            start_quick(page)
+            assert_counter(page, 1, "reload")
+            page.locator(".flag-option").first.click()
+            page.wait_for_selector("#points-line", timeout=5000)
+            page.reload()
+            page.wait_for_load_state("networkidle")
+            assert_ok("reload: back at mode select",
+                      page.locator(".flag-modes-view").count() == 1)
+            after = page.evaluate(
+                "() => Object.fromEntries(Object.entries(localStorage))")
+            assert_ok("reload: storage unchanged", before == after,
+                      f"{before} -> {after}")
+            assert_ok("reload: no page errors", not errors, "; ".join(errors))
+        except Exception as exc:
+            print(f"  FAIL  case 4 reload: {exc}")
+            PROBLEMS.append(f"case 4 reload: {exc}")
+        finally:
+            if browser is not None:
+                browser.close()
+
+        browser = None
+        try:
+            # 5. Phone width: no clipped option text, no horizontal scrollbar, at
+            #    every point of a quick round (before and after each lock).
+            browser, page, errors = open_page(
+                p, base, viewport={"width": 360, "height": 740})
+            start_quick(page)
+            clipped: list[str] = []
+            wide: list[str] = []
+            for position in range(1, QUICK_QUESTIONS + 1):
+                assert_counter(page, position, "360px")
+                wait_flag_image(page, f"360px q{position}")
+                opened = measure_options(page)
+                if len(opened) != 4:
+                    clipped.append(
+                        f"q{position} open: measured {len(opened)} options")
+                clipped.extend(f"q{position} open: {bad}"
+                               for bad in clipped_options(opened))
+                lock_with_second_tap(page, position % 4, f"360px q{position}")
+                rows = measure_options(page)
+                if len(rows) != 4:
+                    clipped.append(
+                        f"q{position} locked: measured {len(rows)} options")
+                clipped.extend(f"q{position} locked: {bad}"
+                               for bad in clipped_options(rows))
+                size = page.evaluate(
+                    "({w: document.documentElement.scrollWidth,"
+                    " c: document.documentElement.clientWidth})")
+                if size["w"] > 361:
+                    wide.append(f"q{position}: {size}")
+                page.locator("#next").click()
+            assert_ok("360px: option text never clipped", not clipped,
+                      "; ".join(clipped))
+            assert_ok("360px: no horizontal scrollbar", not wide, "; ".join(wide))
+            assert_ok("360px: no page errors", not errors, "; ".join(errors))
+        except Exception as exc:
+            print(f"  FAIL  case 5 phone width: {exc}")
+            PROBLEMS.append(f"case 5 phone width: {exc}")
+        finally:
+            if browser is not None:
+                browser.close()
+
+        browser = None
+        try:
+            # 6. Keyboard: Digit1 locks, Enter on the focused Next advances.
+            browser, page, errors = open_page(p, base)
+            start_quick(page)
+            assert_counter(page, 1, "keyboard")
+            focused = page.evaluate(
+                "() => (document.activeElement && document.activeElement.className)"
+                " || ''")
+            assert_ok("keyboard: question view takes focus",
+                      "flag-question" in focused, focused)
+            page.keyboard.press("Digit1")
+            page.wait_for_selector("#points-line", timeout=5000)
+            assert_ok("keyboard: Digit1 locks",
+                      page.locator(".flag-option[disabled]").count() == 4)
+            assert_ok("keyboard: Digit1 reveal", bool(points_text(page)),
+                      points_text(page))
+            try:
+                page.wait_for_function(
+                    "() => document.activeElement"
+                    " && document.activeElement.id === 'next'", timeout=5000)
+                next_focused = True
+            except PlaywrightTimeoutError:
+                next_focused = False
+            assert_ok("keyboard: Next takes focus", next_focused)
+            page.keyboard.press("Enter")
+            assert_counter(page, 2, "keyboard: Enter")
+            assert_ok("keyboard: no page errors", not errors, "; ".join(errors))
+        except Exception as exc:
+            print(f"  FAIL  case 6 keyboard: {exc}")
+            PROBLEMS.append(f"case 6 keyboard: {exc}")
+        finally:
+            if browser is not None:
+                browser.close()
 
     print()
     if PROBLEMS:
