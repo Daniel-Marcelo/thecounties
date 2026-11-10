@@ -242,16 +242,13 @@ def main() -> int:
             p, base, {FLAGS_FULL: FLAGS_QUICK_GONE_VAL,
                       FLAGS_QUICK: FLAGS_QUICK_PART_VAL},
             viewport={"width": 390, "height": 844})
-        flags = page.locator("a.home-quiz[href='/brazil-flags']")
         overflow = page.evaluate(
             "({w: document.documentElement.scrollWidth, "
             "c: document.documentElement.clientWidth})")
-        # TODO(flags-style-8): label squeeze for near-full bars — Task 8 owns
-        # the layout fix. Quick 9/10 leaves the bar undone, and `.home-progress
-        # i` still eats the row, so the label overflows: pinned as a regression
-        # record until Task 8 changes the layout.
-        assert_ok("390px flags seed quick 9/10: overflow pinned for Task 8",
-                  overflow["w"] > overflow["c"], str(overflow))
+        # Task 8: near-full bars take the done-style block layout, so the
+        # label sits on its own line and nothing overflows the viewport.
+        assert_ok("390px flags seed quick 9/10: no overflow",
+                  overflow["w"] <= overflow["c"], str(overflow))
         assert_ok("390px flags seed quick 9/10: no page errors", not errors,
                   "; ".join(errors))
         browser.close()

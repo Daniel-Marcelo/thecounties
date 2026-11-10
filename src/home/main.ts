@@ -101,10 +101,14 @@ function renderFlagsCard(card: Element) {
   const progress = document.createElement("span");
   progress.className = "home-progress";
   progress.setAttribute("aria-hidden", "true");
-  // A full bar takes its own line (block layout) so the label never gets
-  // squeezed off the card — same remedy as finished pack cards.
+  // A full bar takes its own line (block layout); a near-full one
+  // (>= 85 %, e.g. 9 / 10, 25 / 27) does the same so the label can never
+  // be squeezed off the card at narrow widths.
+  const ratio = bestCorrect.total > 0 ? bestCorrect.correct / bestCorrect.total : 0;
   if (bestCorrect.total > 0 && bestCorrect.correct >= bestCorrect.total) {
     progress.classList.add("done");
+  } else if (ratio >= 0.85) {
+    progress.classList.add("near-done");
   }
   const bar = document.createElement("i");
   bar.style.width = barWidth(bestCorrect.correct, bestCorrect.total);

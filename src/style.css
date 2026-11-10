@@ -808,15 +808,41 @@ h1 {
   border-radius: 3px;
 }
 
-/* A finished bar is full width: give it its own line, label beneath. */
-.home-progress.done {
+/* A finished bar is full width: give it its own line, label beneath.
+   A near-full flag bar (9 / 10, 25 / 27, …) does the same, so its label
+   can never be squeezed off the card at narrow widths. */
+.home-progress.done,
+.home-progress.near-done {
   display: block;
 }
 
-.home-progress.done .home-progress-label {
+.home-progress.done .home-progress-label,
+.home-progress.near-done .home-progress-label {
   display: block;
   margin-top: 3px;
   padding-left: 1px;
+}
+
+.home-stat-row {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-stat-row b {
+  color: var(--ink);
+  font-family: "Fraunces", serif;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 .home-footer {
@@ -1272,6 +1298,14 @@ h1 {
   color: var(--card);
 }
 
+.flag-option-cue {
+  flex: 0 0 auto;
+  font-size: 0.95rem;
+  line-height: 1;
+  text-align: center;
+  min-width: 22px;
+}
+
 .flag-feedback {
   display: grid;
   align-content: start;
@@ -1305,11 +1339,6 @@ h1 {
   color: var(--card);
   font-weight: 800;
   cursor: pointer;
-}
-
-#points-line[hidden],
-#next[hidden] {
-  display: none;
 }
 
 .flag-results {
