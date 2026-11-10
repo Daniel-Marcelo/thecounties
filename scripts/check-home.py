@@ -27,6 +27,13 @@ PARTWAY_SESSION = ('{"foundIds":["Dublin","Cork","Mayo","Galway"],'
                    '"guesses":5,"startedAt":1000,"stoppedAt":61000,'
                    '"finished":false}')
 
+FLAGS_FULL = "thecounties.flags.brazil.run.full"
+FLAGS_QUICK = "thecounties.flags.brazil.run.quick"
+FLAGS_FULL_VAL = ('{"bestScore":{"mode":"full","total":27,"correct":25,"score":24830,"playedAt":1000},'
+                  '"bestCorrect":{"mode":"full","total":27,"correct":27,"playedAt":2000}}')
+FLAGS_QUICK_VAL = ('{"bestScore":{"mode":"quick","total":10,"correct":10,"score":8910,"playedAt":1000},'
+                   '"bestCorrect":null}')
+
 
 def assert_ok(name: str, condition: bool, detail: str = "") -> None:
     if condition:
@@ -148,6 +155,55 @@ def main() -> int:
         assert_ok("390px: no horizontal scroll",
                   overflow["w"] <= overflow["c"], str(overflow))
         assert_ok("390px: no page errors", not errors, "; ".join(errors))
+        browser.close()
+
+        # 7. Flags card: one stat row per mode, one bar for the best-correct
+        #    record of the first mode that has one.
+        browser, page, errors = run_case(
+            p, base, {FLAGS_FULL: FLAGS_FULL_VAL, FLAGS_QUICK: FLAGS_QUICK_VAL})
+        flags = page.locator("a.home-quiz[href='/brazil-flags']")
+        rows = flags.locator(".home-stat-row")
+        assert_ok("flags: two stat rows", rows.count() == 2,
+                  f"found {rows.count()}")
+        rows_text = " | ".join(
+            (rows.nth(i).text_content() or "").strip()
+            for i in range(rows.count()))
+        assert_ok("flags: full stat row",
+                  "24,830 pts · 25/27" in rows_text, rows_text)
+        assert_ok("flags: quick stat row",
+                  "8,910 pts · 10/10" in rows_text, rows_text)
+        flag_progress = flags.locator(".home-progress").count()
+        assert_ok("flags: one progress element", flag_progress == 1,
+                  f"found {flag_progress}")
+        bar = flags.locator(".home-progress i")
+        width = (bar.first.evaluate("el => el.style.width")
+                 if bar.count() else "")
+        assert_ok("flags: bar width 100%", width == "100%", width)
+        label_text = progress_label(flags)
+        assert_ok("flags: label 'Best full run: 27 of 27 flags'",
+                  label_text == "Best full run: 27 of 27 flags", label_text)
+        assert_ok("flags: no page errors", not errors, "; ".join(errors))
+        browser.close()
+
+        # 8. Corrupt flags record: other cards untouched, no bar, no error.
+        browser, page, errors = run_case(
+            p, base, {FLAGS_FULL: "not-json", PACK_KEY: PARTWAY_SESSION,
+                      GLOBLE_KEY: '{"targetId":"IDN","guesses":[{"id":"IDN","km":0}],'
+                      '"startedAt":0,"stoppedAt":61000,"finished":true}',
+                      GLOBLE_BEST_KEY: "7"})
+        flags = page.locator("a.home-quiz[href='/brazil-flags']")
+        flag_progress = flags.locator(".home-progress").count()
+        assert_ok("corrupt flags: no progress element", flag_progress == 0,
+                  f"found {flag_progress}")
+        ireland = page.locator("a.home-quiz[href='/ireland']")
+        label_text = progress_label(ireland)
+        assert_ok("corrupt flags: ireland still reads partway",
+                  label_text == "4 of 32 named", label_text)
+        globle = page.locator("a.home-quiz[href='/globle']")
+        label_text = progress_label(globle)
+        assert_ok("corrupt flags: globle still reads its best",
+                  label_text == "best 7 guesses", label_text)
+        assert_ok("corrupt flags: no page errors", not errors, "; ".join(errors))
         browser.close()
 
     print()

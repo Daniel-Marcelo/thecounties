@@ -1,5 +1,5 @@
 import { formatTime } from "../counties";
-import { readHubState, type HubEntry } from "./state";
+import { readFlagsHubState, readHubState, type HubEntry } from "./state";
 
 /** Slug from a card's href: "/ireland" -> "ireland". */
 function slugFromCard(card: HTMLAnchorElement): string | null {
@@ -63,11 +63,62 @@ function renderGlobleCard(card: Element, entry: HubEntry) {
   card.appendChild(progress);
 }
 
+const FLAG_MODES = [
+  { key: "full", label: "Full run", wording: "full run" },
+  { key: "quick", label: "Quick round", wording: "quick round" },
+] as const;
+
+function formatPoints(points: number): string {
+  return points.toLocaleString("en-US");
+}
+
+function renderFlagsCard(card: Element) {
+  const flags = readFlagsHubState();
+  for (const mode of FLAG_MODES) {
+    const best = flags[mode.key];
+    if (best.score === null && best.correct === null) continue;
+    const row = document.createElement("span");
+    row.className = "home-stat-row";
+    const name = document.createElement("span");
+    name.textContent = mode.label;
+    const value = document.createElement("b");
+    const parts: string[] = [];
+    if (best.score !== null) parts.push(`${formatPoints(best.score)} pts`);
+    if (best.correct !== null) parts.push(`${best.correct}/${best.total}`);
+    value.textContent = parts.join(" · ");
+    row.append(name, value);
+    card.appendChild(row);
+  }
+
+  // One bar, from the first mode that has a best-correct record to show.
+  const barMode = FLAG_MODES.find((mode) => flags[mode.key].bestCorrect);
+  if (!barMode) return;
+  const bestCorrect = flags[barMode.key].bestCorrect;
+  if (!bestCorrect) return;
+
+  const progress = document.createElement("span");
+  progress.className = "home-progress";
+  progress.setAttribute("aria-hidden", "true");
+  const bar = document.createElement("i");
+  bar.style.width = barWidth(bestCorrect.correct, bestCorrect.total);
+  const label = document.createElement("span");
+  label.className = "home-progress-label";
+  label.textContent =
+    `Best ${barMode.wording}: ${bestCorrect.correct} of ` +
+    `${bestCorrect.total} flags`;
+  progress.append(bar, label);
+  card.appendChild(progress);
+}
+
 function render() {
   const state = readHubState();
   for (const card of document.querySelectorAll<HTMLAnchorElement>("a.home-quiz")) {
     const slug = slugFromCard(card);
     if (!slug) continue;
+    if (slug === "brazil-flags") {
+      renderFlagsCard(card);
+      continue;
+    }
     const entry = state[slug];
     if (!entry) continue;
     if (slug === "globle") renderGlobleCard(card, entry);

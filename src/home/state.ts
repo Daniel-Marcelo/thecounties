@@ -9,6 +9,16 @@ export type HubEntry = {
 
 export type HubState = Record<string, HubEntry | null>;
 
+export type FlagModeBest = {
+  score: number | null;
+  correct: number | null;
+  total: number;
+  /** The best-correct record, kept apart from the best-score one for the bar. */
+  bestCorrect?: { correct: number; total: number } | null;
+};
+
+export type FlagsHubState = Record<"full" | "quick", FlagModeBest>;
+
 /** Place totals, exactly as the hub cards advertise them. */
 const TOTALS: Record<string, number> = {
   ireland: 32,
@@ -101,4 +111,90 @@ export function readHubState(): HubState {
         : null;
   }
   return state;
+}
+
+const FLAGS_STORAGE_PREFIX = "thecounties.flags.brazil.run.";
+
+/** Question counts the flags quiz runs with, per mode. */
+const FLAG_TOTALS: Record<"full" | "quick", number> = { full: 27, quick: 10 };
+
+type FlagRecord = { total: number; correct: number; score: number | null };
+
+function finiteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** A stored best record; `null` when absent or malformed. */
+function readFlagRecord(value: unknown, mode: string): FlagRecord | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const rec = value as Record<string, unknown>;
+  if (rec.mode !== mode) return null;
+  const total = finiteNumber(rec.total);
+  const correct = finiteNumber(rec.correct);
+  if (total === null || correct === null) return null;
+  // Best-correct records carry no score; only best-score records require one.
+  return { total, correct, score: finiteNumber(rec.score) };
+}
+
+function readFlagMode(mode: "full" | "quick"): FlagModeBest {
+  const best: FlagModeBest = {
+    score: null,
+    correct: null,
+    total: FLAG_TOTALS[mode],
+    bestCorrect: null,
+  };
+
+  let raw: string | null;
+  try {
+    raw = localStorage.getItem(`${FLAGS_STORAGE_PREFIX}${mode}`);
+  } catch {
+    return best;
+  }
+  if (!raw) return best;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return best;
+  }
+  if (!parsed || typeof parsed !== "object") return best;
+
+  const record = parsed as Record<string, unknown>;
+  const scoreRecord = readFlagRecord(record.bestScore, mode);
+  const bestCorrect = readFlagRecord(record.bestCorrect, mode);
+  const bestScore =
+    scoreRecord && scoreRecord.score !== null
+      ? {
+          total: scoreRecord.total,
+          correct: scoreRecord.correct,
+          score: scoreRecord.score,
+        }
+      : null;
+
+  if (bestScore) {
+    best.score = bestScore.score;
+    best.correct = bestScore.correct;
+    best.total = bestScore.total;
+  }
+  if (bestCorrect) {
+    best.bestCorrect = {
+      correct: bestCorrect.correct,
+      total: bestCorrect.total,
+    };
+    // A mode with only a correct record still gets a row, without a score.
+    if (!bestScore) {
+      best.correct = bestCorrect.correct;
+      best.total = bestCorrect.total;
+    }
+  }
+  return best;
+}
+
+/**
+ * The flags quiz keeps two bests per mode; the hub card reads them all.
+ * Corrupt or missing records read as nulls rather than errors.
+ */
+export function readFlagsHubState(): FlagsHubState {
+  return { full: readFlagMode("full"), quick: readFlagMode("quick") };
 }
