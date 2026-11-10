@@ -1524,3 +1524,15 @@ h1 {
     transition: none;
   }
 }
+
+/* Desktop: the flags page topbar is a centred stack — the eyebrow sits above
+   the title instead of hanging off the grid's left column. */
+
+@media (min-width: 820px) {
+  .app.flags-app .topbar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+}
