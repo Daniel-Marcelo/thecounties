@@ -81,7 +81,7 @@ function showModeSelect(): void {
   eyebrow.className = "flag-eyebrow";
   eyebrow.textContent = "Brazil · New · The State Flags";
 
-  const heading = document.createElement("h1");
+  const heading = document.createElement("h2");
   heading.className = "flag-headline";
   heading.tabIndex = -1;
   heading.textContent = "Four answers. One clock. No going back.";
@@ -202,6 +202,24 @@ export function startRun(mode: FlagMode): void {
     image.alt = "Flag of a Brazilian state";
     image.decoding = "async";
     image.draggable = false;
+
+    // The clock starts when the flag decodes — never at mount. A broken or
+    // very slow asset must never freeze the run; a click before decode still
+    // scores from the mount anchor below, so worst case is today's behavior.
+    let startedAt = performance.now();
+    let begun = false;
+    function startClock(): void {
+      if (begun) return;
+      begun = true;
+      startedAt = performance.now();
+      paint();
+      deadline = window.setTimeout(() => {
+        if (!abandoned) lock(null, true);
+      }, FLAG_QUESTION_MS);
+    }
+    image.addEventListener("load", startClock, { once: true });
+    window.setTimeout(startClock, 100);
+
     const source = flagPathFor(question.answerId);
     if (source) image.src = source;
     hero.append(image);
@@ -241,8 +259,6 @@ export function startRun(mode: FlagMode): void {
     section.append(top, hero, timerTrack, optionsWrap, feedback);
     screen.replaceChildren(section);
 
-    // The clock is measured from the moment the question view is in the DOM.
-    const startedAt = performance.now();
     let abandoned = false;
     let locked = false;
     let advanceRequested = false;
@@ -284,8 +300,10 @@ export function startRun(mode: FlagMode): void {
       for (const button of options) {
         if (button.dataset.stateId === question.answerId) {
           button.classList.add("correct");
+          button.append(optionCue("✓"));
         } else if (chosenId !== null && button.dataset.stateId === chosenId) {
           button.classList.add("wrong");
+          button.append(optionCue("✗"));
         }
       }
 
@@ -293,6 +311,8 @@ export function startRun(mode: FlagMode): void {
 
       const pointsLine = document.createElement("p");
       pointsLine.id = "points-line";
+      pointsLine.setAttribute("role", "status");
+      pointsLine.setAttribute("aria-live", "polite");
       if (isCorrect) {
         pointsLine.dataset.kind = "correct";
         pointsLine.textContent = `+${points} · ${displayName(question.answerId)}`;
@@ -321,6 +341,14 @@ export function startRun(mode: FlagMode): void {
       next.focus();
     }
 
+    function optionCue(glyph: string): HTMLElement {
+      const cue = document.createElement("span");
+      cue.className = "flag-option-cue";
+      cue.setAttribute("aria-hidden", "true");
+      cue.textContent = glyph;
+      return cue;
+    }
+
     function paint(): void {
       if (locked || abandoned) return;
       const remaining = remainingMs();
@@ -338,14 +366,6 @@ export function startRun(mode: FlagMode): void {
       });
     }
 
-    /*
-     * A timestamp-checked timeout, independent of rAF: throttled frames can
-     * never leave a question hanging, and a late tap is scored as a timeout.
-     */
-    deadline = window.setTimeout(() => {
-      if (!abandoned) lock(null, true);
-    }, FLAG_QUESTION_MS);
-
     handleQuestionKey = (event: KeyboardEvent) => {
       if (locked || abandoned) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
@@ -356,7 +376,6 @@ export function startRun(mode: FlagMode): void {
       lock(button.dataset.stateId ?? null, false);
     };
 
-    paint();
     section.focus({ preventScroll: true });
   }
 
@@ -534,8 +553,11 @@ function renderResults(result: FlagResult, previous: FlagBests): void {
   }
 
   function showToast(message: string): void {
-    toast.textContent = message;
+    // No toasts on detached nodes (results swaps while a share settles).
+    if (!toast.isConnected) return;
+    // Unhide before writing so screen readers announce the new text.
     toast.hidden = false;
+    toast.textContent = message;
     clearToastTimer();
     toastTimer = window.setTimeout(() => {
       toast.hidden = true;
