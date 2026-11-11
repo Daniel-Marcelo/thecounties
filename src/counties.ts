@@ -211,6 +211,14 @@ export const PROVINCE_COLORS: Record<Province, string> = {
   Ulster: "#b42318",
 };
 
+/** Text usages (status line, Named rows) need AA on paper where the fill
+ *  color would not carry: Munster's orange reads 3.4:1, so text uses this
+ *  darker sibling while map fills keep the bright identity color. */
+export const PROVINCE_TEXT_COLORS: Record<Province, string> = {
+  ...PROVINCE_COLORS,
+  Munster: "#8f4a0e",
+};
+
 const STRIP_PREFIX = /^(county|contae|co)\s+/i;
 
 export function normalizeName(value: string): string {

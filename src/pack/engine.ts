@@ -244,6 +244,22 @@ export function startPack(pack: Pack): void {
     foundListEl.prepend(item);
   }
 
+  /** A revealed miss joins the Named panel without counting as found. */
+  function addMissed(place: Place): void {
+    const item = document.createElement("li");
+    item.dataset.province = place.group;
+    item.classList.add("missed");
+    item.innerHTML = `<span>${place.name}</span><em>${place.group}</em>`;
+    const nameEl = item.querySelector("span");
+    if (nameEl) nameEl.style.color = pack.groupTextColors?.[place.group] ?? pack.groupColors[place.group] ?? "";
+    foundListEl.append(item);
+  }
+
+  /** The reveal says one short line; the map and the Named panel carry the names. */
+  function announceGiveUp(): void {
+    setStatus("giveup", `You had ${found.size} of ${total}. The rest are named on the map.`);
+  }
+
   function saveBest(elapsed: number): void {
     const bestTime = readBestTime();
     if (bestTime === null || elapsed < bestTime) {
@@ -278,13 +294,10 @@ export function startPack(pack: Pack): void {
         setStatus("win", `The lot of them. ${total} ${pack.unitPlural} in ${formatTime(elapsedMs())}.`);
       } else {
         map.revealRemaining(found);
-        const missed = pack.places.filter((place) => !found.has(place.id)).map((place) => place.name);
-        setStatus(
-          "giveup",
-          missed.length
-            ? `You had ${found.size} of ${total}. Still out: ${missed.join(", ")}.`
-            : `You had them all.`,
-        );
+        for (const place of pack.places) {
+          if (!found.has(place.id)) addMissed(place);
+        }
+        announceGiveUp();
       }
       tick();
     } else if (startedAt !== null || found.size > 0 || guesses > 0) {
@@ -358,16 +371,13 @@ export function startPack(pack: Pack): void {
     stopTimer();
     saveSession();
     map.revealRemaining(found);
+    for (const place of pack.places) {
+      if (!found.has(place.id)) addMissed(place);
+    }
     input.disabled = true;
     syncActions();
-
-    const missed = pack.places.filter((place) => !found.has(place.id)).map((place) => place.name);
-    setStatus(
-      "giveup",
-      missed.length
-        ? `You had ${found.size} of ${total}. Still out: ${missed.join(", ")}.`
-        : `You had them all.`,
-    );
+    startOverButton.focus();
+    announceGiveUp();
   }
 
   function resetGame(): void {

@@ -1,4 +1,4 @@
-import { COUNTIES, PROVINCE_COLORS } from "../counties";
+import { COUNTIES, PROVINCE_COLORS, PROVINCE_TEXT_COLORS } from "../counties";
 import type { Pack } from "./types";
 
 export const irelandPack: Pack = {
@@ -14,6 +14,7 @@ export const irelandPack: Pack = {
     aliases: county.aliases,
   })),
   groupColors: PROVINCE_COLORS,
+  groupTextColors: PROVINCE_TEXT_COLORS,
   frame: [
     [-10.7, 51.35],
     [-5.3, 51.35],

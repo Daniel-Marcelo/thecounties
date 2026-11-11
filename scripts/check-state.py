@@ -108,6 +108,24 @@ def save_restore_run(base: str, page, slug: str, total: int) -> None:
     assert_ok("reveal remaining", True)
     assert_ok("input disabled after give-up", not page.locator("#guess").is_enabled())
 
+    # The reveal reads as one short line, legible, with the missed names in
+    # the Named panel - not a comma wall in the status.
+    expected_status = f"You had 2 of {total}. The rest are named on the map."
+    assert_ok("give-up status is the short line",
+              page.locator("#status").text_content() == expected_status,
+              page.locator("#status").text_content() or "")
+    assert_ok("give-up status passes AA",
+              page.locator("#status").evaluate(
+                  "e => getComputedStyle(e).color") == "rgb(143, 74, 14)",
+              page.locator("#status").evaluate("e => getComputedStyle(e).color"))
+    missed_rows = page.locator("#found-list li.missed")
+    assert_ok("missed names in the Named panel",
+              missed_rows.count() == total - 2
+              and (missed_rows.first.locator("span").text_content() or "") != "")
+    assert_ok("focus lands on Start over",
+              page.evaluate("document.activeElement?.id") == "start-over",
+              page.evaluate("document.activeElement?.id") or "body")
+
     # A finished round resets without asking
     page.locator("#start-over").click()
     page.wait_for_function(
@@ -115,6 +133,18 @@ def save_restore_run(base: str, page, slug: str, total: int) -> None:
         "document.querySelectorAll('path.county.found').length === 0", timeout=2000)
     assert_ok("start over resets", True)
     assert_ok("input enabled after reset", page.locator("#guess").is_enabled())
+
+    # Giving up on a fresh round reads the same way
+    page.locator("#give-up").click()
+    page.wait_for_selector("#confirm-dialog[open]")
+    page.locator("#confirm-accept").click()
+    page.wait_for_timeout(200)
+    assert_ok("fresh give-up status",
+              page.locator("#status").text_content()
+              == f"You had 0 of {total}. The rest are named on the map.",
+              page.locator("#status").text_content() or "")
+    assert_ok("all missed on a fresh give-up",
+              page.locator("#found-list li.missed").count() == total)
 
 
 def main() -> int:

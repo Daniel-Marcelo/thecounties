@@ -10,6 +10,7 @@
   --card: #fffaf1;
   --leinster: #2f6b4f;
   --munster: #c56a1a;
+  --munster-text: #8f4a0e;
   --connacht: #1d5a8a;
   --ulster: #b42318;
   --shadow: 0 18px 50px rgba(48, 32, 16, 0.12);
@@ -387,7 +388,7 @@ h1 {
 }
 
 #found-list li[data-province="Leinster"] span { color: var(--leinster); }
-#found-list li[data-province="Munster"] span { color: var(--munster); }
+#found-list li[data-province="Munster"] span { color: var(--munster-text); }
 #found-list li[data-province="Connacht"] span { color: var(--connacht); }
 #found-list li[data-province="Ulster"] span { color: var(--ulster); }
 
@@ -431,7 +432,7 @@ h1 {
 #status[data-kind="ok"] { color: var(--leinster); }
 #status[data-kind="bad"] { color: var(--ulster); }
 #status[data-kind="win"] { color: var(--leinster); font-weight: 800; }
-#status[data-kind="giveup"] { color: var(--munster); }
+#status[data-kind="giveup"] { color: var(--munster-text); }
 
 #guess-form {
   display: grid;

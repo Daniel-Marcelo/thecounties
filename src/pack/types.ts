@@ -15,6 +15,12 @@ export type Pack = {
   featureIdProperty: string;
   places: Place[];
   groupColors: Record<string, string>;
+  /**
+   * Darker variants of groupColors for TEXT usages (status line, Named rows)
+   * where the fill color would fail AA contrast on paper. Map fills keep
+   * groupColors. Unset groups fall back to groupColors.
+   */
+  groupTextColors?: Record<string, string>;
   frame: [number, number][];
   viewBox: [number, number];
   /**
