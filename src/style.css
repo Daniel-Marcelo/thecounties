@@ -165,7 +165,7 @@ h1 {
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  font-size: 0.56rem;
+  font-size: 0.625rem;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -402,6 +402,17 @@ h1 {
   align-items: center;
 }
 
+.rail-empty {
+  margin: 4px 2px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.rail-empty[hidden] {
+  display: none;
+}
+
 .swatch {
   width: 10px;
   height: 10px;
@@ -502,6 +513,11 @@ h1 {
 
 #guess:focus {
   border-color: #a89274;
+}
+
+#guess::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 /* Keyboard focus on the page's primary control gets the real ring,

@@ -46,6 +46,7 @@ export function startPack(pack: Pack): void {
   const helpList = document.querySelector<HTMLUListElement>("#help-list")!;
   const winTitle = document.querySelector<HTMLElement>("#win-title")!;
   const legend = document.querySelector<HTMLElement>("#legend")!;
+  const namedEmpty = document.querySelector<HTMLElement>("#named-empty")!;
   const confirmDialog = document.querySelector<HTMLDialogElement>("#confirm-dialog")!;
   const confirmTitle = document.querySelector<HTMLElement>("#confirm-title")!;
   const confirmBody = document.querySelector<HTMLElement>("#confirm-body")!;
@@ -68,6 +69,10 @@ export function startPack(pack: Pack): void {
   let timerId: number | null = null;
   let finished = false;
   let restoring = false;
+  // The map draws when the geojson lands; guesses typed before that are
+  // queued and replayed in order, so nothing counts without being drawn.
+  let mapReady = false;
+  const pendingGuesses: string[] = [];
 
   function applyChrome(): void {
     document.title = `${pack.title} — Name all ${total} ${pack.unitPlural}`;
@@ -76,6 +81,7 @@ export function startPack(pack: Pack): void {
     foundTotalEl.textContent = `/ ${total} found`;
     input.placeholder = pack.placeholder;
     guessLabel.textContent = `${pack.unitSingular} name`;
+    namedEmpty.textContent = `Nothing yet — the list starts with your first ${pack.unitSingular}.`;
     credit.textContent = pack.credit;
     helpIntro.textContent = pack.helpIntro;
     helpList.replaceChildren(
@@ -87,6 +93,7 @@ export function startPack(pack: Pack): void {
     );
     winTitle.textContent = pack.winTitle;
     setStatus("idle", `Type a ${pack.unitSingular} to begin.`);
+    syncRailEmpty();
 
     legend.replaceChildren();
     for (const [name, color] of Object.entries(pack.groupColors)) {
@@ -244,6 +251,7 @@ export function startPack(pack: Pack): void {
     const nameEl = item.querySelector("span");
     if (nameEl) nameEl.style.color = pack.groupColors[place.group] ?? "";
     foundListEl.prepend(item);
+    syncRailEmpty();
   }
 
   /** A revealed miss joins the Named panel without counting as found. */
@@ -255,6 +263,12 @@ export function startPack(pack: Pack): void {
     const nameEl = item.querySelector("span");
     if (nameEl) nameEl.style.color = pack.groupTextColors?.[place.group] ?? pack.groupColors[place.group] ?? "";
     foundListEl.append(item);
+    syncRailEmpty();
+  }
+
+  /** The rail speaks honestly when there is nothing in it yet. */
+  function syncRailEmpty(): void {
+    namedEmpty.hidden = foundListEl.children.length > 0;
   }
 
   /** The reveal says one short line; the map and the Named panel carry the names. */
@@ -311,6 +325,7 @@ export function startPack(pack: Pack): void {
 
     syncActions();
     renderStats();
+    syncRailEmpty();
     restoring = false;
   }
 
@@ -332,6 +347,10 @@ export function startPack(pack: Pack): void {
     if (finished) return;
     const guess = raw.trim();
     if (!guess) return;
+    if (!mapReady) {
+      pendingGuesses.push(guess);
+      return;
+    }
 
     startTimer();
     const place = matchPlace(guess, aliasIndex, pack.stripPrefixes);
@@ -393,6 +412,7 @@ export function startPack(pack: Pack): void {
     localStorage.removeItem(sessionKey);
     timerEl.textContent = "0:00";
     foundListEl.replaceChildren();
+    syncRailEmpty();
     map.reset();
     input.disabled = false;
     input.value = "";
@@ -467,7 +487,9 @@ export function startPack(pack: Pack): void {
   void map
     .load()
     .then(() => {
+      mapReady = true;
       restoreSession();
+      for (const guess of pendingGuesses.splice(0)) submitGuess(guess);
       input.focus();
     })
     .catch((error: unknown) => {

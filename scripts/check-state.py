@@ -44,10 +44,21 @@ def mobile_run(base: str, page, width: int, height: int, slug: str) -> None:
     page.wait_for_function("document.querySelectorAll('path.county').length > 0", timeout=15000)
     close_help(page)
     first = page.evaluate("document.querySelector('path.county').dataset.name")
+    empty = page.locator("#named-empty")
+    empty_speaks = (empty.count() == 1 and empty.evaluate("e => !e.hidden")
+                    and "your first country" in (empty.text_content() or ""))
+    assert_ok(f"mobile {width}px: empty rail speaks", empty_speaks,
+              empty.text_content() if empty.count() else "#named-empty missing")
+    label_px = page.locator(".stats small").first.evaluate("e => parseFloat(getComputedStyle(e).fontSize)")
+    assert_ok(f"mobile {width}px: stat labels reach 10px", label_px >= 10, f"{label_px}px")
+    ph = page.locator("#guess").evaluate("e => getComputedStyle(e, '::placeholder').color")
+    assert_ok(f"mobile {width}px: placeholder is muted ink", ph == "rgb(107, 97, 86)", ph)
     page.locator("#guess").fill(first)
     page.locator("#guess").press("Enter")
     page.wait_for_function("document.querySelector('#found-count')?.textContent === '1'", timeout=2000)
     assert_ok(f"mobile {width}px: answers work", True)
+    assert_ok(f"mobile {width}px: empty rail yields",
+              empty.count() == 1 and empty.evaluate("e => e.hidden"))
     assert_ok(f"mobile {width}px: status is a live region",
               page.locator("#status[role='status']").count() == 1)
     page.locator("#guess").focus()
@@ -193,11 +204,36 @@ def desktop_run(base: str, page, slug: str, total: int) -> None:
     assert_ok("desktop: start-over remains", page.locator("#start-over").is_visible())
 
 
+def race_run(base: str, page, slug: str, race_name: str) -> None:
+    """A guess typed before the geojson resolves still fills its place -
+    counted once, drawn once. Needs one known-valid name for the pack."""
+    page.set_viewport_size({"width": 1280, "height": 900})
+    pending: list = []
+    page.route("**/*geojson*", lambda route: pending.append(route))
+    page.goto(f"{base}/{slug}")
+    page.evaluate("localStorage.clear()")
+    page.reload()
+    page.wait_for_timeout(250)
+    if page.locator("#help-dialog[open]").count():
+        page.locator("#help-dialog [data-close]").click()
+    assert_ok("race: map held back", len(pending) >= 1
+              and page.locator("path.county").count() == 0)
+    page.locator("#guess").fill(race_name)
+    page.locator("#guess").press("Enter")
+    page.wait_for_timeout(300)
+    pending.pop().continue_()
+    page.wait_for_function("document.querySelector('#found-count')?.textContent === '1'", timeout=5000)
+    assert_ok("race: queued guess fills once", page.locator("path.county.found").count() == 1)
+    page.unroute("**/*geojson*")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--slug", required=True)
     parser.add_argument("--total", type=int, required=True)
     parser.add_argument("--base", default="http://localhost:4304")
+    parser.add_argument("--race-name", required=True,
+                        help="one known-valid name, used by the map-load race check")
     args = parser.parse_args()
 
     with sync_playwright() as p:
@@ -209,6 +245,7 @@ def main() -> int:
         mobile_run(args.base, page, 768, 1024, args.slug)
         save_restore_run(args.base, page, args.slug, args.total)
         desktop_run(args.base, page, args.slug, args.total)
+        race_run(args.base, page, args.slug, args.race_name)
         if errors:
             print("PAGE ERRORS:")
             for e in errors:
