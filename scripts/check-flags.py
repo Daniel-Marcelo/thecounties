@@ -344,6 +344,7 @@ def main() -> int:
             seed_values = {
                 "brazil-flags": check_home.FLAGS_FULL_VAL,
                 "europe-flags": check_home.EUROPE_FLAGS_FULL_VAL,
+                "ireland-flags": check_home.IRELAND_FLAGS_FULL_VAL,
             }
             seeded = json.loads(seed_values[slug])
             best = seeded["bestScore"]

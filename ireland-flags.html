@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta
+      name="description"
+      content="Four answers. One clock. No going back — name the 32 county flags of Ireland."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="The Counties" />
+    <meta property="og:title" content="Ireland — The County Flags — The Counties" />
+    <meta
+      property="og:description"
+      content="Four answers. One clock. No going back — name the 32 county flags of Ireland."
+    />
+    <meta property="og:url" content="https://thecounties.vercel.app/" />
+    <meta property="og:image" content="https://thecounties.vercel.app/og-card.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Ireland — The County Flags — The Counties" />
+    <meta
+      name="twitter:description"
+      content="Four answers. One clock. No going back — name the 32 county flags of Ireland."
+    />
+    <title>The County Flags — The Counties</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,700&family=Nunito:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="app flags-app">
+      <header class="topbar">
+        <p class="eyebrow">Ireland · The County Flags</p>
+        <h1>The County Flags</h1>
+      </header>
+
+      <main class="stage" id="screen"></main>
+
+      <footer class="dock">
+        <p class="credit">County colours sourced from Wikimedia Commons · per-file credits in /flags/ireland-ATTRIBUTION.md</p>
+      </footer>
+    </div>
+
+    <script type="module" src="/src/flags/ireland.ts"></script>
+  </body>
+</html>

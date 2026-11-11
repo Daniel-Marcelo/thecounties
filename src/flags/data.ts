@@ -1,8 +1,8 @@
 /**
  * Shared flag-quiz plumbing: the entity shape and the two scoring constants.
  * Everything quiz-specific (bank, assets, copy, storage prefix) lives in a
- * per-quiz config module — `brazil.ts`, `europe.ts` — described by
- * `config.ts`.
+ * per-quiz config module — `brazil.ts`, `europe.ts`, `ireland.ts` — described
+ * by `config.ts`.
  */
 
 export type StateFlag = { id: string; name: string; group: string };

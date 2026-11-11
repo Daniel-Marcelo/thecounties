@@ -34,8 +34,24 @@ function shuffle<T>(items: readonly T[]): T[] {
   return copy;
 }
 
-function pickDistractors(answer: StateFlag, all: StateFlag[]): string[] {
-  const pool = all.filter((flag) => flag.id !== answer.id);
+/**
+ * Distractors must be visually distinct from the answer. Two entities whose
+ * flag assets are the same file — e.g. Irish counties that share identical
+ * GAA colour designs — would render identical options and make the question
+ * unanswerable, so they are excluded from the pool. Quizzes whose assets are
+ * unique per entity (Brazil, Europe) are unaffected.
+ */
+function pickDistractors(
+  answer: StateFlag,
+  all: StateFlag[],
+  assets?: Readonly<Record<string, string>>,
+): string[] {
+  const answerAsset = assets?.[answer.id];
+  const pool = all.filter((flag) => {
+    if (flag.id === answer.id) return false;
+    if (answerAsset !== undefined && assets?.[flag.id] === answerAsset) return false;
+    return true;
+  });
   const sameGroup = shuffle(pool.filter((flag) => flag.group === answer.group));
   const otherGroups = shuffle(pool.filter((flag) => flag.group !== answer.group));
 
@@ -51,13 +67,17 @@ export function buildRun(
   bank: readonly StateFlag[],
   mode: FlagMode,
   quickCount: number = QUICK_DEFAULT,
+  assets?: Readonly<Record<string, string>>,
 ): FlagRun {
   const answers = shuffle(bank);
   const selected = mode === "quick" ? answers.slice(0, quickCount) : answers;
 
   const questions = selected.map((answer) => ({
     answerId: answer.id,
-    options: shuffle([answer.id, ...pickDistractors(answer, [...bank])]),
+    options: shuffle([
+      answer.id,
+      ...pickDistractors(answer, [...bank], assets),
+    ]),
   }));
 
   return { mode, questions };

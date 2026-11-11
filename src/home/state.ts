@@ -123,6 +123,10 @@ const FLAGS_QUIZZES: Record<string, { storagePrefix: string; totals: Record<"ful
     storagePrefix: "thecounties.flags.europe.run.",
     totals: { full: 46, quick: 10 },
   },
+  "ireland-flags": {
+    storagePrefix: "thecounties.flags.ireland.run.",
+    totals: { full: 32, quick: 10 },
+  },
 };
 
 type FlagRecord = { total: number; correct: number; score: number | null };

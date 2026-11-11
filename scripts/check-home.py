@@ -43,6 +43,14 @@ EUROPE_FLAGS_FULL_VAL = ('{"bestScore":{"mode":"full","total":46,"correct":41,"s
 EUROPE_FLAGS_QUICK_VAL = ('{"bestScore":{"mode":"quick","total":10,"correct":9,"score":8120,"playedAt":1000},'
                           '"bestCorrect":null}')
 
+# A third flags quiz — same rule: its card reads only its own prefix.
+IRELAND_FLAGS_FULL = "thecounties.flags.ireland.run.full"
+IRELAND_FLAGS_QUICK = "thecounties.flags.ireland.run.quick"
+IRELAND_FLAGS_FULL_VAL = ('{"bestScore":{"mode":"full","total":32,"correct":29,"score":27940,"playedAt":1000},'
+                          '"bestCorrect":{"mode":"full","total":32,"correct":32,"score":31880,"playedAt":2000}}')
+IRELAND_FLAGS_QUICK_VAL = ('{"bestScore":{"mode":"quick","total":10,"correct":8,"score":7230,"playedAt":1000},'
+                           '"bestCorrect":null}')
+
 
 def assert_ok(name: str, condition: bool, detail: str = "") -> None:
     if condition:
@@ -289,6 +297,39 @@ def main() -> int:
                   brazil.locator(".home-stat-row").count() == 0 and
                   brazil.locator(".home-progress").count() == 0)
         assert_ok("europe flags: no page errors", not errors, "; ".join(errors))
+        browser.close()
+
+        # 11. Ireland flags card: reads only its own prefix; the other two
+        #     flags cards stay fresh.
+        browser, page, errors = run_case(
+            p, base, {IRELAND_FLAGS_FULL: IRELAND_FLAGS_FULL_VAL,
+                      IRELAND_FLAGS_QUICK: IRELAND_FLAGS_QUICK_VAL})
+        ireland_flags = page.locator("a.home-quiz[href='/ireland-flags']")
+        rows = ireland_flags.locator(".home-stat-row")
+        assert_ok("ireland flags: two stat rows", rows.count() == 2,
+                  f"found {rows.count()}")
+        rows_text = " | ".join(
+            (rows.nth(i).text_content() or "").strip()
+            for i in range(rows.count()))
+        assert_ok("ireland flags: full stat row",
+                  "27,940 pts · 29/32" in rows_text, rows_text)
+        assert_ok("ireland flags: quick stat row",
+                  "7,230 pts · 8/10" in rows_text, rows_text)
+        bar = ireland_flags.locator(".home-progress i")
+        width = (bar.first.evaluate("el => el.style.width")
+                 if bar.count() else "")
+        assert_ok("ireland flags: full bar", width == "100%", width)
+        label_text = progress_label(ireland_flags)
+        assert_ok("ireland flags: label 'Best full run: 32 of 32 flags'",
+                  label_text == "Best full run: 32 of 32 flags", label_text)
+        brazil = page.locator("a.home-quiz[href='/brazil-flags']")
+        europe = page.locator("a.home-quiz[href='/europe-flags']")
+        assert_ok("ireland flags: brazil and europe cards stay fresh",
+                  brazil.locator(".home-stat-row").count() == 0 and
+                  brazil.locator(".home-progress").count() == 0 and
+                  europe.locator(".home-stat-row").count() == 0 and
+                  europe.locator(".home-progress").count() == 0)
+        assert_ok("ireland flags: no page errors", not errors, "; ".join(errors))
         browser.close()
 
     print()

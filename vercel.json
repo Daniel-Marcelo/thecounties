@@ -22,6 +22,8 @@
     { "source": "/brazil-flags", "destination": "/brazil-flags" },
     { "source": "/brazil-flags/", "destination": "/brazil-flags" },
     { "source": "/europe-flags", "destination": "/europe-flags" },
-    { "source": "/europe-flags/", "destination": "/europe-flags" }
+    { "source": "/europe-flags/", "destination": "/europe-flags" },
+    { "source": "/ireland-flags", "destination": "/ireland-flags" },
+    { "source": "/ireland-flags/", "destination": "/ireland-flags" }
   ]
 }

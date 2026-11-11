@@ -126,7 +126,7 @@ function render() {
   for (const card of document.querySelectorAll<HTMLAnchorElement>("a.home-quiz")) {
     const slug = slugFromCard(card);
     if (!slug) continue;
-    if (slug === "brazil-flags" || slug === "europe-flags") {
+    if (slug === "brazil-flags" || slug === "europe-flags" || slug === "ireland-flags") {
       renderFlagsCard(card, slug);
       continue;
     }

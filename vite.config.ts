@@ -13,6 +13,8 @@ const FLAGS_ROUTES: Record<string, string> = {
   "/brazil-flags/": "/brazil-flags.html",
   "/europe-flags": "/europe-flags.html",
   "/europe-flags/": "/europe-flags.html",
+  "/ireland-flags": "/ireland-flags.html",
+  "/ireland-flags/": "/ireland-flags.html",
 };
 
 const PACK_ROUTES: Record<string, string> = Object.fromEntries(
@@ -61,6 +63,12 @@ function packRoutes(): Plugin {
         resolve(outDir, "europe-flags.html"),
         resolve(europeFlagsDir, "index.html"),
       );
+      const irelandFlagsDir = resolve(outDir, "ireland-flags");
+      mkdirSync(irelandFlagsDir, { recursive: true });
+      copyFileSync(
+        resolve(outDir, "ireland-flags.html"),
+        resolve(irelandFlagsDir, "index.html"),
+      );
     },
   };
 }
@@ -78,6 +86,7 @@ export default defineConfig({
         globle: resolve(__dirname, "globle.html"),
         "brazil-flags": resolve(__dirname, "brazil-flags.html"),
         "europe-flags": resolve(__dirname, "europe-flags.html"),
+        "ireland-flags": resolve(__dirname, "ireland-flags.html"),
       },
     },
   },

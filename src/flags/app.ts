@@ -155,7 +155,9 @@ export function createFlagsApp(config: FlagQuizConfig): void {
     teardownActiveView();
     clearToastTimer();
 
-    const run = buildRun(config.bank, mode, config.quickCount);
+    // Assets join so identical flag files never compete as options (see
+    // pickDistractors): some Irish counties share identical colour designs.
+    const run = buildRun(config.bank, mode, config.quickCount, config.flagIds);
     let index = 0;
     let score = 0;
     let correctCount = 0;
