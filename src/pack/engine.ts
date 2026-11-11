@@ -240,6 +240,12 @@ export function startPack(pack: Pack): void {
     }
   }
 
+  /** Text in the Named panel uses the darker AA variant where the fill
+   *  color would not carry; map fills keep the identity colors. */
+  function textColorFor(place: Place): string {
+    return pack.groupTextColors?.[place.group] ?? pack.groupColors[place.group] ?? "";
+  }
+
   function addFound(place: Place): void {
     found.add(place.id);
     foundOrder.push(place);
@@ -249,7 +255,7 @@ export function startPack(pack: Pack): void {
     item.dataset.province = place.group;
     item.innerHTML = `<span>${place.name}</span><em>${place.group}</em>`;
     const nameEl = item.querySelector("span");
-    if (nameEl) nameEl.style.color = pack.groupColors[place.group] ?? "";
+    if (nameEl) nameEl.style.color = textColorFor(place);
     foundListEl.prepend(item);
     syncRailEmpty();
   }
@@ -261,7 +267,7 @@ export function startPack(pack: Pack): void {
     item.classList.add("missed");
     item.innerHTML = `<span>${place.name}</span><em>${place.group}</em>`;
     const nameEl = item.querySelector("span");
-    if (nameEl) nameEl.style.color = pack.groupTextColors?.[place.group] ?? pack.groupColors[place.group] ?? "";
+    if (nameEl) nameEl.style.color = textColorFor(place);
     foundListEl.append(item);
     syncRailEmpty();
   }

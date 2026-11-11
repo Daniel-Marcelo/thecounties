@@ -6,7 +6,13 @@ renders (no horizontal overflow, usable inputs), session save/restore across
 reload (map fill + timer resume), give-up/reveal-remaining, and start-over.
 
 Usage:
-  python scripts/check-state.py --slug asia --total 47 [--base http://localhost:4304]
+  python scripts/check-state.py --slug asia --total 47 --race-name India --row-name Vietnam \\
+      [--base http://localhost:4304]
+
+--race-name: a known-valid name, used by the map-load race check.
+--row-name:  optional; a known-valid name whose group fill color fails AA on
+             paper (Vietnam for asia, Cork for ireland). When given, the
+             found-row contrast check runs.
 """
 
 from __future__ import annotations
@@ -29,12 +35,39 @@ def assert_ok(name: str, condition: bool, detail: str = "") -> None:
         PROBLEMS.append(name)
 
 
+# WCAG contrast ratio of every span under `sel` against its nearest painted
+# ancestor background. Encodes the plan constraint: newly colored text on
+# paper must be >= 4.5:1.
+CONTRAST_JS = r"""
+(sel) => {
+  const ch = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const lum = (r, g, b) => 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+  const nums = (s) => (s.match(/\d+(\.\d+)?/g) || []).map(Number);
+  const bgOf = (el) => {
+    for (let e = el; e; e = e.parentElement) {
+      const parts = nums(getComputedStyle(e).backgroundColor);
+      const a = parts.length > 3 ? parts[3] : 1;
+      if (a > 0) return [parts[0], parts[1], parts[2]];
+    }
+    return [255, 255, 255];
+  };
+  return Array.from(document.querySelectorAll(sel), (s) => {
+    const f = nums(getComputedStyle(s).color);
+    const b = bgOf(s);
+    const la = lum(f[0], f[1], f[2]);
+    const lb = lum(b[0], b[1], b[2]);
+    return +(((Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)).toFixed(2));
+  });
+}
+"""
+
+
 def close_help(page) -> None:
     if page.locator("#help-dialog[open]").count():
         page.locator("#help-dialog [data-close]").click()
 
 
-def mobile_run(base: str, page, width: int, height: int, slug: str) -> None:
+def mobile_run(base: str, page, width: int, height: int, slug: str, narrow: bool = False) -> None:
     page.set_viewport_size({"width": width, "height": height})
     page.goto(f"{base}/{slug}")
     page.wait_for_function("document.querySelectorAll('path.county').length > 0", timeout=15000)
@@ -46,11 +79,15 @@ def mobile_run(base: str, page, width: int, height: int, slug: str) -> None:
     first = page.evaluate("document.querySelector('path.county').dataset.name")
     empty = page.locator("#named-empty")
     empty_speaks = (empty.count() == 1 and empty.evaluate("e => !e.hidden")
-                    and "your first country" in (empty.text_content() or ""))
+                    and "starts with your first" in (empty.text_content() or ""))
     assert_ok(f"mobile {width}px: empty rail speaks", empty_speaks,
               empty.text_content() if empty.count() else "#named-empty missing")
     label_px = page.locator(".stats small").first.evaluate("e => parseFloat(getComputedStyle(e).fontSize)")
-    assert_ok(f"mobile {width}px: stat labels reach 10px", label_px >= 10, f"{label_px}px")
+    if narrow:
+        # <=350px keeps the deliberate clip-guard override, below the 10px floor.
+        assert_ok(f"mobile {width}px: stat labels keep the small override", label_px < 10, f"{label_px}px")
+    else:
+        assert_ok(f"mobile {width}px: stat labels reach 10px", label_px >= 10, f"{label_px}px")
     ph = page.locator("#guess").evaluate("e => getComputedStyle(e, '::placeholder').color")
     assert_ok(f"mobile {width}px: placeholder is muted ink", ph == "rgb(107, 97, 86)", ph)
     page.locator("#guess").fill(first)
@@ -99,6 +136,10 @@ def save_restore_run(base: str, page, slug: str, total: int) -> None:
     # Start over mid-round asks first; cancelling keeps progress
     page.locator("#start-over").click()
     page.wait_for_selector("#confirm-dialog[open]")
+    # A reflexive Enter must not sit one keystroke from the destructive button.
+    assert_ok("confirm dialog starts on the safe button",
+              page.evaluate("document.activeElement?.id") == "confirm-cancel",
+              page.evaluate("document.activeElement?.id") or "body")
     page.locator("#confirm-dialog [data-close]").click()
     page.wait_for_timeout(150)
     assert_ok("start-over cancelled keeps progress",
@@ -144,9 +185,24 @@ def save_restore_run(base: str, page, slug: str, total: int) -> None:
     assert_ok("missed names in the Named panel",
               missed_rows.count() == total - 2
               and (missed_rows.first.locator("span").text_content() or "") != "")
+    missed_ratios = page.evaluate(CONTRAST_JS, "#found-list li.missed span")
+    assert_ok("missed rows pass AA", min(missed_ratios) >= 4.5, f"min {min(missed_ratios)}")
     assert_ok("focus lands on Start over",
               page.evaluate("document.activeElement?.id") == "start-over",
               page.evaluate("document.activeElement?.id") or "body")
+
+    # The finished round must survive a reload unchanged (plan Review Focus 3)
+    page.reload()
+    page.wait_for_function("document.querySelectorAll('path.county').length > 0", timeout=15000)
+    close_help(page)
+    assert_ok("restored give-up keeps the short status",
+              page.locator("#status").text_content() == expected_status,
+              page.locator("#status").text_content() or "")
+    assert_ok("restored give-up keeps missed rows",
+              page.locator("#found-list li.missed").count() == total - 2)
+    assert_ok("restored give-up hides the form",
+              not page.locator("#guess-form").is_visible()
+              and not page.locator("#guess").is_enabled())
 
     # A finished round resets without asking
     page.locator("#start-over").click()
@@ -169,10 +225,10 @@ def save_restore_run(base: str, page, slug: str, total: int) -> None:
               page.locator("#found-list li.missed").count() == total)
 
 
-def desktop_run(base: str, page, slug: str, total: int) -> None:
+def desktop_run(base: str, page, slug: str, total: int, row_name: str | None) -> None:
     """The composition is viewport-locked on phones; desktop owes the same:
     the guess bar visible on load at 1280x900, and no dead form after the
-    round ends."""
+    round ends. `row_name` (optional) exercises the found-row text colors."""
     page.set_viewport_size({"width": 1280, "height": 900})
     page.goto(f"{base}/{slug}")
     page.wait_for_function("document.querySelectorAll('path.county').length > 0", timeout=15000)
@@ -193,9 +249,22 @@ def desktop_run(base: str, page, slug: str, total: int) -> None:
     assert_ok("desktop 1280x760: guess bar visible on load", bottom <= inner, f"{bottom} > {inner}")
 
     first = page.evaluate("document.querySelector('path.county').dataset.name")
-    page.locator("#guess").fill(first)
-    page.locator("#guess").press("Enter")
-    page.wait_for_timeout(120)
+
+    if row_name:
+        # Found rows carry the darker text variants, not the fill colors.
+        page.locator("#guess").fill(row_name)
+        page.locator("#guess").press("Enter")
+        page.wait_for_function("document.querySelector('#found-count')?.textContent === '1'", timeout=2000)
+        if first != row_name:
+            page.locator("#guess").fill(first)
+            page.locator("#guess").press("Enter")
+            page.wait_for_function("document.querySelector('#found-count')?.textContent === '2'", timeout=2000)
+        found_ratios = page.evaluate(CONTRAST_JS, "#found-list li span")
+        assert_ok("found rows pass AA", min(found_ratios) >= 4.5, f"min {min(found_ratios)}")
+    else:
+        page.locator("#guess").fill(first)
+        page.locator("#guess").press("Enter")
+        page.wait_for_timeout(120)
     page.locator("#give-up").click()
     page.wait_for_selector("#confirm-dialog[open]")
     page.locator("#confirm-accept").click()
@@ -208,15 +277,16 @@ def race_run(base: str, page, slug: str, race_name: str) -> None:
     """A guess typed before the geojson resolves still fills its place -
     counted once, drawn once. Needs one known-valid name for the pack."""
     page.set_viewport_size({"width": 1280, "height": 900})
-    pending: list = []
-    page.route("**/*geojson*", lambda route: pending.append(route))
     page.goto(f"{base}/{slug}")
     page.evaluate("localStorage.clear()")
+    # Intercept only the reload's fetch, so exactly one route is ever held.
+    pending: list = []
+    page.route("**/*geojson*", lambda route: pending.append(route))
     page.reload()
     page.wait_for_timeout(250)
     if page.locator("#help-dialog[open]").count():
         page.locator("#help-dialog [data-close]").click()
-    assert_ok("race: map held back", len(pending) >= 1
+    assert_ok("race: map held back", len(pending) == 1
               and page.locator("path.county").count() == 0)
     page.locator("#guess").fill(race_name)
     page.locator("#guess").press("Enter")
@@ -234,6 +304,10 @@ def main() -> int:
     parser.add_argument("--base", default="http://localhost:4304")
     parser.add_argument("--race-name", required=True,
                         help="one known-valid name, used by the map-load race check")
+    parser.add_argument("--row-name", default=None,
+                        help="known-valid name whose group fill color fails AA on paper "
+                             "(Vietnam for asia, Cork for ireland); enables the found-row "
+                             "contrast check")
     args = parser.parse_args()
 
     with sync_playwright() as p:
@@ -243,8 +317,9 @@ def main() -> int:
         page.on("pageerror", lambda e: errors.append(str(e)))
         mobile_run(args.base, page, 390, 844, args.slug)
         mobile_run(args.base, page, 768, 1024, args.slug)
+        mobile_run(args.base, page, 350, 590, args.slug, narrow=True)
         save_restore_run(args.base, page, args.slug, args.total)
-        desktop_run(args.base, page, args.slug, args.total)
+        desktop_run(args.base, page, args.slug, args.total, args.row_name)
         race_run(args.base, page, args.slug, args.race_name)
         if errors:
             print("PAGE ERRORS:")
