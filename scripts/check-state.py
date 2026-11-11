@@ -74,6 +74,15 @@ def save_restore_run(base: str, page, slug: str, total: int) -> None:
     page.wait_for_function("document.querySelector('#found-count')?.textContent === '2'", timeout=2000)
     assert_ok("2 saved pre-reload", page.locator("path.county.found").count() == 2)
 
+    # Start over mid-round asks first; cancelling keeps progress
+    page.locator("#start-over").click()
+    page.wait_for_selector("#confirm-dialog[open]")
+    page.locator("#confirm-dialog [data-close]").click()
+    page.wait_for_timeout(150)
+    assert_ok("start-over cancelled keeps progress",
+              page.locator("path.county.found").count() == 2
+              and page.locator("#confirm-dialog[open]").count() == 0)
+
     page.reload()
     page.wait_for_function("document.querySelectorAll('path.county').length > 0", timeout=15000)
     close_help(page)
@@ -82,13 +91,24 @@ def save_restore_run(base: str, page, slug: str, total: int) -> None:
     page.wait_for_function("document.querySelector('#timer')?.textContent !== '0:00'", timeout=2000)
     assert_ok("timer resumed", True)
 
+    # Give-up must ask first; cancelling changes nothing
     page.locator("#give-up").click()
+    page.wait_for_selector("#confirm-dialog[open]")
+    page.locator("#confirm-dialog [data-close]").click()
+    page.wait_for_timeout(150)
+    assert_ok("reveal cancelled",
+              page.locator("path.county.revealed").count() == 0
+              and page.locator("#status[data-kind='ok']").count() == 1)
+
+    page.locator("#give-up").click()
+    page.wait_for_selector("#confirm-dialog[open]")
+    page.locator("#confirm-accept").click()
     page.wait_for_function(
         f"document.querySelectorAll('path.county.revealed').length === {total - 2}", timeout=2000)
     assert_ok("reveal remaining", True)
     assert_ok("input disabled after give-up", not page.locator("#guess").is_enabled())
 
-    page.on("dialog", lambda d: d.accept())
+    # A finished round resets without asking
     page.locator("#start-over").click()
     page.wait_for_function(
         "document.querySelector('#found-count')?.textContent === '0' && "

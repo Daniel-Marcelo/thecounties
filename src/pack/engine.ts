@@ -46,6 +46,10 @@ export function startPack(pack: Pack): void {
   const helpList = document.querySelector<HTMLUListElement>("#help-list")!;
   const winTitle = document.querySelector<HTMLElement>("#win-title")!;
   const legend = document.querySelector<HTMLElement>("#legend")!;
+  const confirmDialog = document.querySelector<HTMLDialogElement>("#confirm-dialog")!;
+  const confirmTitle = document.querySelector<HTMLElement>("#confirm-title")!;
+  const confirmBody = document.querySelector<HTMLElement>("#confirm-body")!;
+  const confirmAccept = document.querySelector<HTMLButtonElement>("#confirm-accept")!;
 
   const appEl = document.querySelector<HTMLElement>(".app");
   const namedToggle = document.querySelector<HTMLButtonElement>("#named-toggle");
@@ -98,6 +102,31 @@ export function startPack(pack: Pack): void {
   function setStatus(kind: StatusKind, message: string): void {
     statusEl.dataset.kind = kind;
     statusEl.textContent = message;
+  }
+
+  /** One styled native dialog asks before anything irreversible. */
+  function askConfirm(title: string, body: string, acceptLabel: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      confirmTitle.textContent = title;
+      confirmBody.textContent = body;
+      confirmAccept.textContent = acceptLabel;
+      let settled = false;
+      const finish = (accepted: boolean) => {
+        if (settled) return;
+        settled = true;
+        resolve(accepted);
+      };
+      confirmAccept.addEventListener(
+        "click",
+        () => {
+          finish(true);
+          confirmDialog.close();
+        },
+        { once: true },
+      );
+      confirmDialog.addEventListener("close", () => finish(false), { once: true });
+      confirmDialog.showModal();
+    });
   }
 
   function setListOpen(open: boolean): void {
@@ -389,10 +418,24 @@ export function startPack(pack: Pack): void {
     input.focus();
   });
 
-  giveUpButton.addEventListener("click", giveUp);
+  giveUpButton.addEventListener("click", () => {
+    if (finished) return;
+    void askConfirm(
+      "Show the rest?",
+      "This ends the round. The places you missed get named on the map, and the timer stops.",
+      "Show them",
+    ).then((accepted) => {
+      if (accepted) giveUp();
+    });
+  });
   startOverButton.addEventListener("click", () => {
     if (!hasProgress()) return;
-    if (!finished && !window.confirm("Start over from scratch? This clears your saved progress.")) {
+    if (!finished) {
+      void askConfirm("Start over?", "This clears your saved progress and empties the map.", "Start over").then(
+        (accepted) => {
+          if (accepted) resetGame();
+        },
+      );
       return;
     }
     resetGame();
