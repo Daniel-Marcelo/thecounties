@@ -48,6 +48,11 @@ def mobile_run(base: str, page, width: int, height: int, slug: str) -> None:
     page.locator("#guess").press("Enter")
     page.wait_for_function("document.querySelector('#found-count')?.textContent === '1'", timeout=2000)
     assert_ok(f"mobile {width}px: answers work", True)
+    assert_ok(f"mobile {width}px: status is a live region",
+              page.locator("#status[role='status']").count() == 1)
+    page.locator("#guess").focus()
+    outline = page.locator("#guess").evaluate("e => getComputedStyle(e).outlineWidth")
+    assert_ok(f"mobile {width}px: input focus ring visible", outline == "2px", outline)
     overflow = page.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth")
     assert_ok(f"mobile {width}px: no horizontal scroll", not overflow)
     assert_ok(f"mobile {width}px: input usable", page.locator("#guess").is_visible()
@@ -64,6 +69,12 @@ def save_restore_run(base: str, page, slug: str, total: int) -> None:
     page.reload()
     page.wait_for_function("document.querySelectorAll('path.county').length > 0", timeout=15000)
     close_help(page)
+    # The status line announces itself; the dialogs announce their titles.
+    assert_ok("status is a live region", page.locator("#status[role='status']").count() == 1)
+    assert_ok("help dialog is labelled",
+              page.locator("#help-dialog[aria-labelledby='help-title']").count() == 1)
+    assert_ok("win dialog is labelled",
+              page.locator("#win-dialog[aria-labelledby='win-title']").count() == 1)
 
     first = page.evaluate("document.querySelector('path.county').dataset.name")
     second = page.evaluate("document.querySelectorAll('path.county')[1].dataset.name")

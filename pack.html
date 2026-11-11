@@ -65,7 +65,7 @@
       </main>
 
       <footer class="dock">
-        <p id="status" data-kind="idle"></p>
+        <p id="status" data-kind="idle" role="status"></p>
         <form id="guess-form">
           <label class="sr-only" id="guess-label" for="guess">Name</label>
           <input
@@ -88,14 +88,14 @@
       </footer>
     </div>
 
-    <dialog id="help-dialog" class="sheet">
-      <h2>How to play</h2>
+    <dialog id="help-dialog" class="sheet" aria-labelledby="help-title">
+      <h2 id="help-title">How to play</h2>
       <p id="help-intro"></p>
       <ul id="help-list"></ul>
       <button type="button" data-close>To the map</button>
     </dialog>
 
-    <dialog id="win-dialog" class="sheet win">
+    <dialog id="win-dialog" class="sheet win" aria-labelledby="win-title">
       <h2 id="win-title"></h2>
       <p id="win-summary"></p>
       <div class="win-actions">
