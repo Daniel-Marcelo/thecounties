@@ -153,6 +153,8 @@ export function startPack(pack: Pack): void {
   function syncActions(): void {
     giveUpButton.hidden = finished;
     startOverButton.hidden = !hasProgress();
+    // An ended round stops looking playable: status and Start over own the dock.
+    form.hidden = finished;
   }
 
   function readBestTime(): number | null {

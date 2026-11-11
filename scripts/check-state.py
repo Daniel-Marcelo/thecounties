@@ -158,6 +158,41 @@ def save_restore_run(base: str, page, slug: str, total: int) -> None:
               page.locator("#found-list li.missed").count() == total)
 
 
+def desktop_run(base: str, page, slug: str, total: int) -> None:
+    """The composition is viewport-locked on phones; desktop owes the same:
+    the guess bar visible on load at 1280x900, and no dead form after the
+    round ends."""
+    page.set_viewport_size({"width": 1280, "height": 900})
+    page.goto(f"{base}/{slug}")
+    page.wait_for_function("document.querySelectorAll('path.county').length > 0", timeout=15000)
+    close_help(page)
+    page.evaluate("localStorage.clear()")
+    page.reload()
+    page.wait_for_function("document.querySelectorAll('path.county').length > 0", timeout=15000)
+    close_help(page)
+    bottom = page.evaluate("document.querySelector('#guess-form').getBoundingClientRect().bottom")
+    inner = page.evaluate("window.innerHeight")
+    assert_ok("desktop 1280x900: guess bar visible on load", bottom <= inner, f"{bottom} > {inner}")
+
+    # Short laptop-class viewports are where the dock used to fall off
+    page.set_viewport_size({"width": 1280, "height": 760})
+    page.wait_for_timeout(150)
+    bottom = page.evaluate("document.querySelector('#guess-form').getBoundingClientRect().bottom")
+    inner = page.evaluate("window.innerHeight")
+    assert_ok("desktop 1280x760: guess bar visible on load", bottom <= inner, f"{bottom} > {inner}")
+
+    first = page.evaluate("document.querySelector('path.county').dataset.name")
+    page.locator("#guess").fill(first)
+    page.locator("#guess").press("Enter")
+    page.wait_for_timeout(120)
+    page.locator("#give-up").click()
+    page.wait_for_selector("#confirm-dialog[open]")
+    page.locator("#confirm-accept").click()
+    page.wait_for_timeout(200)
+    assert_ok("desktop: form retired after give-up", not page.locator("#guess-form").is_visible())
+    assert_ok("desktop: start-over remains", page.locator("#start-over").is_visible())
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--slug", required=True)
@@ -173,6 +208,7 @@ def main() -> int:
         mobile_run(args.base, page, 390, 844, args.slug)
         mobile_run(args.base, page, 768, 1024, args.slug)
         save_restore_run(args.base, page, args.slug, args.total)
+        desktop_run(args.base, page, args.slug, args.total)
         if errors:
             print("PAGE ERRORS:")
             for e in errors:
