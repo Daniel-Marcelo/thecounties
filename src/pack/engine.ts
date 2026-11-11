@@ -46,6 +46,11 @@ export function startPack(pack: Pack): void {
   const helpList = document.querySelector<HTMLUListElement>("#help-list")!;
   const winTitle = document.querySelector<HTMLElement>("#win-title")!;
   const legend = document.querySelector<HTMLElement>("#legend")!;
+  const namedEmpty = document.querySelector<HTMLElement>("#named-empty")!;
+  const confirmDialog = document.querySelector<HTMLDialogElement>("#confirm-dialog")!;
+  const confirmTitle = document.querySelector<HTMLElement>("#confirm-title")!;
+  const confirmBody = document.querySelector<HTMLElement>("#confirm-body")!;
+  const confirmAccept = document.querySelector<HTMLButtonElement>("#confirm-accept")!;
 
   const appEl = document.querySelector<HTMLElement>(".app");
   const namedToggle = document.querySelector<HTMLButtonElement>("#named-toggle");
@@ -64,6 +69,10 @@ export function startPack(pack: Pack): void {
   let timerId: number | null = null;
   let finished = false;
   let restoring = false;
+  // The map draws when the geojson lands; guesses typed before that are
+  // queued and replayed in order, so nothing counts without being drawn.
+  let mapReady = false;
+  const pendingGuesses: string[] = [];
 
   function applyChrome(): void {
     document.title = `${pack.title} — Name all ${total} ${pack.unitPlural}`;
@@ -72,6 +81,7 @@ export function startPack(pack: Pack): void {
     foundTotalEl.textContent = `/ ${total} found`;
     input.placeholder = pack.placeholder;
     guessLabel.textContent = `${pack.unitSingular} name`;
+    namedEmpty.textContent = `Nothing yet — the list starts with your first ${pack.unitSingular}.`;
     credit.textContent = pack.credit;
     helpIntro.textContent = pack.helpIntro;
     helpList.replaceChildren(
@@ -83,6 +93,7 @@ export function startPack(pack: Pack): void {
     );
     winTitle.textContent = pack.winTitle;
     setStatus("idle", `Type a ${pack.unitSingular} to begin.`);
+    syncRailEmpty();
 
     legend.replaceChildren();
     for (const [name, color] of Object.entries(pack.groupColors)) {
@@ -98,6 +109,31 @@ export function startPack(pack: Pack): void {
   function setStatus(kind: StatusKind, message: string): void {
     statusEl.dataset.kind = kind;
     statusEl.textContent = message;
+  }
+
+  /** One styled native dialog asks before anything irreversible. */
+  function askConfirm(title: string, body: string, acceptLabel: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      confirmTitle.textContent = title;
+      confirmBody.textContent = body;
+      confirmAccept.textContent = acceptLabel;
+      let settled = false;
+      const finish = (accepted: boolean) => {
+        if (settled) return;
+        settled = true;
+        resolve(accepted);
+      };
+      confirmAccept.addEventListener(
+        "click",
+        () => {
+          finish(true);
+          confirmDialog.close();
+        },
+        { once: true },
+      );
+      confirmDialog.addEventListener("close", () => finish(false), { once: true });
+      confirmDialog.showModal();
+    });
   }
 
   function setListOpen(open: boolean): void {
@@ -124,6 +160,8 @@ export function startPack(pack: Pack): void {
   function syncActions(): void {
     giveUpButton.hidden = finished;
     startOverButton.hidden = !hasProgress();
+    // An ended round stops looking playable: status and Start over own the dock.
+    form.hidden = finished;
   }
 
   function readBestTime(): number | null {
@@ -202,6 +240,12 @@ export function startPack(pack: Pack): void {
     }
   }
 
+  /** Text in the Named panel uses the darker AA variant where the fill
+   *  color would not carry; map fills keep the identity colors. */
+  function textColorFor(place: Place): string {
+    return pack.groupTextColors?.[place.group] ?? pack.groupColors[place.group] ?? "";
+  }
+
   function addFound(place: Place): void {
     found.add(place.id);
     foundOrder.push(place);
@@ -211,8 +255,31 @@ export function startPack(pack: Pack): void {
     item.dataset.province = place.group;
     item.innerHTML = `<span>${place.name}</span><em>${place.group}</em>`;
     const nameEl = item.querySelector("span");
-    if (nameEl) nameEl.style.color = pack.groupColors[place.group] ?? "";
+    if (nameEl) nameEl.style.color = textColorFor(place);
     foundListEl.prepend(item);
+    syncRailEmpty();
+  }
+
+  /** A revealed miss joins the Named panel without counting as found. */
+  function addMissed(place: Place): void {
+    const item = document.createElement("li");
+    item.dataset.province = place.group;
+    item.classList.add("missed");
+    item.innerHTML = `<span>${place.name}</span><em>${place.group}</em>`;
+    const nameEl = item.querySelector("span");
+    if (nameEl) nameEl.style.color = textColorFor(place);
+    foundListEl.append(item);
+    syncRailEmpty();
+  }
+
+  /** The rail speaks honestly when there is nothing in it yet. */
+  function syncRailEmpty(): void {
+    namedEmpty.hidden = foundListEl.children.length > 0;
+  }
+
+  /** The reveal says one short line; the map and the Named panel carry the names. */
+  function announceGiveUp(): void {
+    setStatus("giveup", `You had ${found.size} of ${total}. The rest are named on the map.`);
   }
 
   function saveBest(elapsed: number): void {
@@ -249,13 +316,10 @@ export function startPack(pack: Pack): void {
         setStatus("win", `The lot of them. ${total} ${pack.unitPlural} in ${formatTime(elapsedMs())}.`);
       } else {
         map.revealRemaining(found);
-        const missed = pack.places.filter((place) => !found.has(place.id)).map((place) => place.name);
-        setStatus(
-          "giveup",
-          missed.length
-            ? `You had ${found.size} of ${total}. Still out: ${missed.join(", ")}.`
-            : `You had them all.`,
-        );
+        for (const place of pack.places) {
+          if (!found.has(place.id)) addMissed(place);
+        }
+        announceGiveUp();
       }
       tick();
     } else if (startedAt !== null || found.size > 0 || guesses > 0) {
@@ -267,6 +331,7 @@ export function startPack(pack: Pack): void {
 
     syncActions();
     renderStats();
+    syncRailEmpty();
     restoring = false;
   }
 
@@ -288,6 +353,10 @@ export function startPack(pack: Pack): void {
     if (finished) return;
     const guess = raw.trim();
     if (!guess) return;
+    if (!mapReady) {
+      pendingGuesses.push(guess);
+      return;
+    }
 
     startTimer();
     const place = matchPlace(guess, aliasIndex, pack.stripPrefixes);
@@ -329,16 +398,13 @@ export function startPack(pack: Pack): void {
     stopTimer();
     saveSession();
     map.revealRemaining(found);
+    for (const place of pack.places) {
+      if (!found.has(place.id)) addMissed(place);
+    }
     input.disabled = true;
     syncActions();
-
-    const missed = pack.places.filter((place) => !found.has(place.id)).map((place) => place.name);
-    setStatus(
-      "giveup",
-      missed.length
-        ? `You had ${found.size} of ${total}. Still out: ${missed.join(", ")}.`
-        : `You had them all.`,
-    );
+    startOverButton.focus();
+    announceGiveUp();
   }
 
   function resetGame(): void {
@@ -352,6 +418,7 @@ export function startPack(pack: Pack): void {
     localStorage.removeItem(sessionKey);
     timerEl.textContent = "0:00";
     foundListEl.replaceChildren();
+    syncRailEmpty();
     map.reset();
     input.disabled = false;
     input.value = "";
@@ -389,10 +456,24 @@ export function startPack(pack: Pack): void {
     input.focus();
   });
 
-  giveUpButton.addEventListener("click", giveUp);
+  giveUpButton.addEventListener("click", () => {
+    if (finished) return;
+    void askConfirm(
+      "Show the rest?",
+      "This ends the round. The places you missed get named on the map, and the timer stops.",
+      "Show them",
+    ).then((accepted) => {
+      if (accepted) giveUp();
+    });
+  });
   startOverButton.addEventListener("click", () => {
     if (!hasProgress()) return;
-    if (!finished && !window.confirm("Start over from scratch? This clears your saved progress.")) {
+    if (!finished) {
+      void askConfirm("Start over?", "This clears your saved progress and empties the map.", "Start over").then(
+        (accepted) => {
+          if (accepted) resetGame();
+        },
+      );
       return;
     }
     resetGame();
@@ -412,7 +493,9 @@ export function startPack(pack: Pack): void {
   void map
     .load()
     .then(() => {
+      mapReady = true;
       restoreSession();
+      for (const guess of pendingGuesses.splice(0)) submitGuess(guess);
       input.focus();
     })
     .catch((error: unknown) => {

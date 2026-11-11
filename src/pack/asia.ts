@@ -72,6 +72,10 @@ export const asiaPack: Pack = {
     [EAST]: "#b42318",
     [SOUTHEAST]: "#c56a1a",
   },
+  // Southeast's orange is the one group fill that fails AA on paper as text.
+  groupTextColors: {
+    [SOUTHEAST]: "#8f4a0e",
+  },
   frame: [
     [24, -12.5],
     [148, -12.5],

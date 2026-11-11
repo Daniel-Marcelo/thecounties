@@ -78,7 +78,6 @@ def run(base: str, slug: str, total: int, groups: list[str], aliases: list[str])
         page.locator("#win-dialog [data-close]").click()
 
         # Alias spellings each claim the right country on a fresh round
-        page.on("dialog", lambda d: d.accept())
         page.locator("#start-over").click()
         page.wait_for_function(
             "document.querySelector('#found-count')?.textContent === '0'", timeout=2000)

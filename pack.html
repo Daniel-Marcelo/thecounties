@@ -60,12 +60,13 @@
             <button id="rail-close" type="button" class="ghost rail-close">Close</button>
           </div>
           <ul id="found-list"></ul>
+          <p id="named-empty" class="rail-empty" hidden></p>
           <p id="legend" class="legend"></p>
         </aside>
       </main>
 
       <footer class="dock">
-        <p id="status" data-kind="idle"></p>
+        <p id="status" data-kind="idle" role="status"></p>
         <form id="guess-form">
           <label class="sr-only" id="guess-label" for="guess">Name</label>
           <input
@@ -88,19 +89,28 @@
       </footer>
     </div>
 
-    <dialog id="help-dialog" class="sheet">
-      <h2>How to play</h2>
+    <dialog id="help-dialog" class="sheet" aria-labelledby="help-title">
+      <h2 id="help-title">How to play</h2>
       <p id="help-intro"></p>
       <ul id="help-list"></ul>
       <button type="button" data-close>To the map</button>
     </dialog>
 
-    <dialog id="win-dialog" class="sheet win">
+    <dialog id="win-dialog" class="sheet win" aria-labelledby="win-title">
       <h2 id="win-title"></h2>
       <p id="win-summary"></p>
       <div class="win-actions">
         <button type="button" id="share">Share</button>
         <button type="button" data-close class="ghost">Close</button>
+      </div>
+    </dialog>
+
+    <dialog id="confirm-dialog" class="sheet" aria-labelledby="confirm-title">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-body"></p>
+      <div class="win-actions">
+        <button type="button" id="confirm-accept"></button>
+        <button type="button" id="confirm-cancel" data-close class="ghost" autofocus>Keep playing</button>
       </div>
     </dialog>
 
